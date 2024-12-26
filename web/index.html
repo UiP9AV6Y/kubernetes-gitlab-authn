@@ -1,0 +1,29 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Name}}</title>
+  </head>
+  <body>
+    <header>
+      <h1>{{.Name}}</h1>
+    </header>
+    <main>
+      {{if .Description}}<h2>{{.Description}}</h2>{{end}}
+      {{if .Version}}<div>Version: {{.Version}}</div>{{end}}
+      <p>This service identifies you based on
+      <a href="https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html">Personal Access Tokens</a>
+      created on <a href="{{.GitlabURL}}" target="_blank">{{.GitlabURL.Host}}</a></p>
+      <p>You <strong>do not</strong> need to provide your password or token to this service directly.
+      Instead, configure your Kubernetes client to use the token for authentication.</p>
+      <p><code>kubectl config set-credentials <strong>$CLUSTER_USER</strong> --token=<strong>$GITLAB_TOKEN</strong></code></p>
+      <p>The Kubernetes authentication system will
+      <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication">verify the token</a>
+      on your behalf and map the information provided by the Gitlab instance to subject information suitable
+      for <a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding">RBAC resources</a>.</p>
+      </p>
+    </main>
+    <!-- Rendered at {{.StartTime}} -->
+  </body>
+</html>
+

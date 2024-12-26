@@ -1,0 +1,29 @@
+---
+
+version: '2.4'
+
+services:
+  gitlab:
+    image: localhost/gitlab-mock
+    build:
+      context: ./mock
+  authn:
+    image: localhost/kubernetes-gitlab-authn
+    build:
+      context: .
+    depends_on:
+      - gitlab
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9080:9080"
+      - "127.0.0.1:18080:18080"
+    volumes:
+      - type: bind
+        source: ./config.dev.yaml
+        target: /etc/kubernetes/gitlab-authn.yaml
+        read_only: true
+      - type: bind
+        source: ./web
+        target: /web
+        read_only: true
+

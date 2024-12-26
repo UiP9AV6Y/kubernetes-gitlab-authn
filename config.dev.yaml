@@ -1,0 +1,20 @@
+---
+
+gitlab:
+  address: gitlab
+  port: 8080
+  tls: ~
+
+server:
+  port: 8080
+
+health:
+  port: 18080
+
+metrics:
+  port: 9080
+
+web:
+  path: ./web
+
+
