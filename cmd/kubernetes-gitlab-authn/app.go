@@ -34,13 +34,12 @@ func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Con
 	}
 
 	authOpts := &handler.AuthHandlerOpts{
-		Require2FA:           cfg.Gitlab.UserFilter.Require2FA,
-		RejectBots:           cfg.Gitlab.UserFilter.RejectBots,
 		AttributesAsGroups:   cfg.Gitlab.AttributesAsGroups,
 		GroupsOwnedOnly:      cfg.Gitlab.GroupFilter.OwnedOnly,
 		GroupsTopLevelOnly:   cfg.Gitlab.GroupFilter.TopLevelOnly,
 		GroupsMinAccessLevel: cfg.Gitlab.GroupFilter.MinAccessLevel,
 		GroupsFilter:         cfg.Gitlab.GroupFilter.Name,
+		UserACLs:             cfg.Gitlab.UserAccessControlList(),
 	}
 	authHandler, err := handler.NewAuthHandler(apiClient, logger, authOpts)
 	if err != nil {
@@ -57,6 +56,7 @@ func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Con
 
 	router.Handle(cfg.Server.HandlerPath(""), webHandler)
 	router.Handle(cfg.Server.HandlerPath("authenticate"), authHandler)
+	router.Handle(cfg.Server.HandlerPath("authenticate/{realm}"), authHandler)
 
 	return router, nil
 }

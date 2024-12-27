@@ -4,6 +4,19 @@ gitlab:
   address: gitlab
   port: 8080
   tls: ~
+  realm_acls:
+    '':
+      # default realm
+      - &common_acls
+        reject_locked: true
+        reject_pristine: true
+    enclave:
+      # require 2FA set up
+      - require_2fa: true
+        <<: *common_acls
+      # OR members of admin group
+      - require_groups: [ core/admins ]
+        <<: *common_acls
 
 server:
   port: 8080

@@ -10,6 +10,9 @@ import (
 // simulated time of confirmation
 var now = time.Now()
 
+// User provider property
+var userProvider = "gitlab-mock"
+
 // shared user attributes
 var customUserAttributes = []*gitlab.CustomAttribute{
 	&gitlab.CustomAttribute{
@@ -25,10 +28,9 @@ var (
 		Username:         "admin",
 		Email:            "root@localhost.localdomain",
 		Name:             "Admin User",
-		Provider:         "gitlab-mock",
+		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
 		ConfirmedAt:      &now,
-		TwoFactorEnabled: true,
 		IsAdmin:          true,
 	}
 	mockUser = gitlab.User{
@@ -36,46 +38,56 @@ var (
 		Username:         "mock",
 		Email:            "mock@localhost.localdomain",
 		Name:             "Mock User",
-		Provider:         "gitlab-mock",
+		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
 		ConfirmedAt:      &now,
 	}
-	externalUser = gitlab.User{
+	secureUser = gitlab.User{
 		ID:               3456,
+		Username:         "secure",
+		Email:            "secure@localhost.localdomain",
+		Name:             "Secure User",
+		Provider:         userProvider,
+		CustomAttributes: customUserAttributes,
+		ConfirmedAt:      &now,
+		TwoFactorEnabled: true,
+	}
+	externalUser = gitlab.User{
+		ID:               4321,
 		Username:         "external",
 		Email:            "external@localhost.localdomain",
 		Name:             "External User",
-		Provider:         "gitlab-mock",
+		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
 		ConfirmedAt:      &now,
 		External:         true,
 	}
 	botUser = gitlab.User{
-		ID:               4321,
+		ID:               5050,
 		Username:         "bot",
 		Email:            "bot@localhost.localdomain",
 		Name:             "Bot User",
-		Provider:         "gitlab-mock",
+		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
 		ConfirmedAt:      &now,
 		Bot:              true,
 	}
 	lockedUser = gitlab.User{
-		ID:               5050,
+		ID:               6443,
 		Username:         "locked",
 		Email:            "locked@localhost.localdomain",
 		Name:             "Locked User",
-		Provider:         "gitlab-mock",
+		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
 		ConfirmedAt:      &now,
 		Locked:           true,
 	}
 	pristineUser = gitlab.User{
-		ID:               6443,
+		ID:               7890,
 		Username:         "pristine",
 		Email:            "pristine@localhost.localdomain",
 		Name:             "Pristine User",
-		Provider:         "gitlab-mock",
+		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
 	}
 )
@@ -88,14 +100,22 @@ var (
 		Path: "core",
 	}
 	adminGroup = gitlab.Group{
-		ID:   11,
-		Name: "Administrators",
-		Path: "core/admins",
+		ID:   		11,
+		Name: 		"Administrators",
+		Path: 		"core-admins",
+		ParentID: 1,
 	}
 	userGroup = gitlab.Group{
-		ID:   12,
-		Name: "Users",
-		Path: "core/users",
+		ID:   		12,
+		Name: 		"Users",
+		Path: 		"core-users",
+		ParentID: 1,
+	}
+	specialGroup = gitlab.Group{
+		ID:   		13,
+		Name: 		"Non-conformant attributes",
+		Path: 		"core-special",
+		ParentID: 1,
 	}
 )
 
@@ -103,6 +123,7 @@ var (
 var (
 	pkAdmin    = "ADMIN"
 	pkMock     = "MOCK"
+	pkSecure   = "SECURE"
 	pkExternal = "EXTERNAl"
 	pkBot      = "BOT"
 	pkLocked   = "LOCKED"
@@ -110,6 +131,7 @@ var (
 	pks        = []string{
 		pkAdmin,
 		pkMock,
+		pkSecure,
 		pkExternal,
 		pkBot,
 		pkLocked,
@@ -127,6 +149,7 @@ func init() {
 	userDAO = make(map[string]gitlab.User, 6)
 	userDAO[pkAdmin] = adminUser
 	userDAO[pkMock] = mockUser
+	userDAO[pkSecure] = secureUser
 	userDAO[pkExternal] = externalUser
 	userDAO[pkBot] = botUser
 	userDAO[pkLocked] = lockedUser
@@ -138,13 +161,17 @@ func init() {
 	userGroups := []gitlab.Group{
 		coreGroup, userGroup,
 	}
+	specialGroups := []gitlab.Group{
+		coreGroup, userGroup, specialGroup,
+	}
 	groupDAO = make(map[string][]gitlab.Group, 6)
 	groupDAO[pkAdmin] = adminGroups
 	groupDAO[pkMock] = userGroups
-	groupDAO[pkExternal] = userGroups
-	groupDAO[pkBot] = userGroups
-	groupDAO[pkLocked] = userGroups
-	groupDAO[pkPristine] = userGroups
+	groupDAO[pkSecure] = userGroups
+	groupDAO[pkExternal] = specialGroups
+	groupDAO[pkBot] = specialGroups
+	groupDAO[pkLocked] = specialGroups
+	groupDAO[pkPristine] = specialGroups
 }
 
 // findPK performs a substring search with the primary keys

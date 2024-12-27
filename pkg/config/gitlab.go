@@ -7,11 +7,60 @@ import (
 	"os"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 )
 
-type GitlabUserFilter struct {
+type GitlabAccessRules struct {
+	// Reject users without 2FA set up
 	Require2FA bool `json:"require_2fa"`
+	// Reject users marked as robots
 	RejectBots bool `json:"reject_bots"`
+	// Reject users in locked state
+	RejectLocked bool `json:"reject_locked"`
+	// Reject users which have not confirmed their account yet
+	RejectPristine bool `json:"reject_pristine"`
+	// Only allow users with the given usernames
+	RequireUsers []string `json:"require_users"`
+	// Reject users based on their username
+	RejectUsers []string `json:"reject_users"`
+	// Require membership of at least one of these groups
+	RequireGroups []string `json:"require_groups"`
+	// Reject members of the given groups
+	RejectGroups []string `json:"reject_groups"`
+}
+
+func (r *GitlabAccessRules) UserRules() (result []access.UserRuler) {
+	result = []access.UserRuler{}
+	if r == nil {
+		return
+	}
+
+	if r.Require2FA {
+		result = append(result, access.User2FARequirement)
+	}
+
+	if r.RejectBots {
+		result = append(result, access.UserBotRejection)
+	}
+
+	if r.RejectLocked {
+		result = append(result, access.UserLockedRejection)
+	}
+
+	if r.RejectPristine {
+		result = append(result, access.UserPristineRejection)
+	}
+
+	if r.RequireUsers != nil {
+		result = append(result, access.UserNameRequirement(r.RequireUsers))
+	}
+
+	if r.RejectUsers != nil {
+		result = append(result, access.UserNameRejection(r.RejectUsers))
+	}
+
+	return
 }
 
 type GitlabGroupFilter struct {
@@ -24,10 +73,9 @@ type GitlabGroupFilter struct {
 type Gitlab struct {
 	Server `json:",inline"`
 
-	AttributesAsGroups bool `json:"attributes_as_groups"`
-
-	UserFilter  GitlabUserFilter  `json:"user_filter"`
-	GroupFilter GitlabGroupFilter `json:"group_filter"`
+	AttributesAsGroups bool                          `json:"attributes_as_groups"`
+	GroupFilter        GitlabGroupFilter             `json:"group_filter"`
+	RealmACLs          map[string]*GitlabAccessRules `json:"realm_acls"`
 }
 
 func NewGitlab() *Gitlab {
@@ -40,6 +88,15 @@ func NewGitlab() *Gitlab {
 	result.GroupFilter.MinAccessLevel = gitlab.MinimalAccessPermissions
 
 	return result
+}
+
+func (g *Gitlab) UserAccessControlList() access.UserRealmRuler {
+	acls := make(map[string][]access.UserRuler, len(g.RealmACLs))
+	for realm, rules := range g.RealmACLs {
+		acls[realm] = rules.UserRules()
+	}
+
+	return access.UserRealmRuler(acls)
 }
 
 func (g *Gitlab) HTTPClient() (client *http.Client, err error) {

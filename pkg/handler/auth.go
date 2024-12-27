@@ -13,6 +13,7 @@ import (
 	authentication "k8s.io/api/authentication/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 )
 
@@ -30,18 +31,20 @@ const (
 )
 
 type AuthHandlerOpts struct {
-	Require2FA           bool
-	RejectBots           bool
-	AttributesAsGroups   bool
+	AttributesAsGroups bool
+
 	GroupsOwnedOnly      bool
 	GroupsTopLevelOnly   bool
 	GroupsMinAccessLevel gitlab.AccessLevelValue
 	GroupsFilter         string
+
+	UserACLs access.UserRealmRuler
 }
 
 func NewAuthHandlerOpts() *AuthHandlerOpts {
 	result := &AuthHandlerOpts{
 		GroupsMinAccessLevel: gitlab.MinimalAccessPermissions,
+		UserACLs:             access.NewDefaultUserRealmRuler(),
 	}
 
 	return result
@@ -68,9 +71,12 @@ func (o *AuthHandlerOpts) ListGroupsOptions() *gitlab.ListGroupsOptions {
 }
 
 type AuthHandler struct {
-	client *gitlab.Client
-	logger *log.Adapter
-	opts   *AuthHandlerOpts
+	client     *gitlab.Client
+	logger     *log.Adapter
+	listGroups *gitlab.ListGroupsOptions
+	attrGroups bool
+
+	userAuth access.UserRealmRuler
 }
 
 func NewAuthHandler(client *gitlab.Client, logger *log.Adapter, opts *AuthHandlerOpts) (*AuthHandler, error) {
@@ -79,9 +85,11 @@ func NewAuthHandler(client *gitlab.Client, logger *log.Adapter, opts *AuthHandle
 	}
 
 	result := &AuthHandler{
-		client: client,
-		logger: logger,
-		opts:   opts,
+		client:     client,
+		logger:     logger,
+		listGroups: opts.ListGroupsOptions(),
+		attrGroups: opts.AttributesAsGroups,
+		userAuth:   opts.UserACLs,
 	}
 
 	return result, nil
@@ -106,6 +114,15 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s := r.PathValue("realm")
+	err = h.Authorize(u, g, s)
+	if err != nil {
+		h.logger.Info("Authorization failed", "user", u.Username, "realm", s, "err", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		h.rejectReview(w, m, "precondition failed")
+		return
+	}
+
 	i := h.UserInfo(u, g)
 	h.logger.Info("Authentication accepted", "user", u.Username)
 	w.WriteHeader(http.StatusOK)
@@ -124,13 +141,7 @@ func (h *AuthHandler) Authenticate(ctx context.Context, token string) (user *git
 		return
 	}
 
-	err = h.Authorize(user)
-	if err != nil {
-		return
-	}
-
-	opts := h.opts.ListGroupsOptions()
-	groups, _, err = h.client.Groups.ListGroups(opts,
+	groups, _, err = h.client.Groups.ListGroups(h.listGroups,
 		gitlab.WithContext(ctx),
 		gitlab.WithToken(gitlab.PrivateToken, token),
 	)
@@ -141,18 +152,10 @@ func (h *AuthHandler) Authenticate(ctx context.Context, token string) (user *git
 	return
 }
 
-func (h *AuthHandler) Authorize(user *gitlab.User) error {
-	if user.Locked {
-		return ErrUserLocked
-	}
-	if user.ConfirmedAt == nil {
-		return ErrUserUnconfirmed
-	}
-	if user.Bot && h.opts.RejectBots {
-		return ErrUserRobot
-	}
-	if !user.TwoFactorEnabled && h.opts.Require2FA {
-		return ErrUser2FA
+func (h *AuthHandler) Authorize(user *gitlab.User, groups []*gitlab.Group, realm string) (err error) {
+	err = h.userAuth.AuthorizeUser(realm, user)
+	if err != nil {
+		return
 	}
 
 	return nil
@@ -160,7 +163,7 @@ func (h *AuthHandler) Authorize(user *gitlab.User) error {
 
 func (h *AuthHandler) UserInfo(user *gitlab.User, groups []*gitlab.Group) authentication.UserInfo {
 	var gids []string
-	if h.opts.AttributesAsGroups {
+	if h.attrGroups {
 		agids := userAttributeGroups(user)
 		gids = make([]string, len(groups), len(groups)+len(agids))
 		gids = append(gids, agids...)
