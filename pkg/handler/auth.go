@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -46,13 +47,16 @@ type AuthHandlerOpts struct {
 	GroupsMinAccessLevel gitlab.AccessLevelValue
 	GroupsFilter         string
 
-	UserACLs access.UserRealmRuler
+	UserACLs map[string]access.AccessRuler
 }
 
 func NewAuthHandlerOpts() *AuthHandlerOpts {
+	acls := map[string]access.AccessRuler{
+		"": access.UserDefaultRequirement,
+	}
 	result := &AuthHandlerOpts{
 		GroupsMinAccessLevel: gitlab.MinimalAccessPermissions,
-		UserACLs:             access.NewDefaultUserRealmRuler(),
+		UserACLs:             acls,
 	}
 
 	return result
@@ -84,7 +88,7 @@ type AuthHandler struct {
 	listGroups *gitlab.ListGroupsOptions
 	attrGroups bool
 
-	userAuth access.UserRealmRuler
+	userAuth map[string]access.AccessRuler
 }
 
 func NewAuthHandler(client *gitlab.Client, logger *log.Adapter, opts *AuthHandlerOpts) (*AuthHandler, error) {
@@ -160,10 +164,15 @@ func (h *AuthHandler) Authenticate(ctx context.Context, token string) (user *git
 	return
 }
 
-func (h *AuthHandler) Authorize(user *gitlab.User, groups []*gitlab.Group, realm string) (err error) {
-	err = h.userAuth.AuthorizeUser(realm, user)
-	if err != nil {
-		return
+func (h *AuthHandler) Authorize(user *gitlab.User, groups []*gitlab.Group, realm string) error {
+	userAuth, ok := h.userAuth[realm]
+	if !ok {
+		return fmt.Errorf("No such authentication realm %q", realm)
+	}
+
+	ok = userAuth.Authorize(user, groups)
+	if !ok {
+		return fmt.Errorf("user %q is not authorized to access realm %q", user.Username, realm)
 	}
 
 	return nil
@@ -180,7 +189,7 @@ func (h *AuthHandler) UserInfo(user *gitlab.User, groups []*gitlab.Group) authen
 	}
 
 	for i, g := range groups {
-		gids[i] = strings.Replace(g.FullPath, "/", ":")
+		gids[i] = strings.ReplaceAll(g.FullPath, "/", ":")
 	}
 
 	extra := userAttributeExtra(user)

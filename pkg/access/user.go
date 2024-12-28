@@ -6,85 +6,48 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
-const (
-	ExplainUserNameRequire    = "Username is not explicitly allowed"
-	ExplainUserNameReject     = "Username is explicitly rejected"
-	ExplainUser2FARequire     = "Second factor authentication must be enabled"
-	ExplainUserBotReject      = "Robot users are not allowed"
-	ExplainUserLockedReject   = "User is locked"
-	ExplainUserPristineReject = "User has never logged in before"
-)
-
-type UserRuler interface {
-	Explain() string
-	AuthorizeUser(*gitlab.User) bool
-}
-
-type UserRulerFunc func(u *gitlab.User) bool
-
 var (
-	User2FARequirement    UserRuler
-	UserBotRejection      UserRuler
-	UserLockedRejection   UserRuler
-	UserPristineRejection UserRuler
+	UserDefaultRequirement AccessRuler
+	UserDefaultRejection   AccessRuler
+	User2FARequirement     AccessRuler
+	UserBotRejection       AccessRuler
+	UserLockedRejection    AccessRuler
+	UserPristineRejection  AccessRuler
 )
 
-type userRule struct {
-	e string
-	u UserRulerFunc
-}
-
-func (a *userRule) Explain() string {
-	return a.e
-}
-
-func (a *userRule) AuthorizeUser(u *gitlab.User) bool {
-	return a.u(u)
-}
-
-func newUserNameRule(n []string, allow bool, exp string) *userRule {
-	logic := func(u *gitlab.User) bool {
+func newUserNameRule(n []string, allow bool) AccessRuler {
+	result := func(u *gitlab.User, _ []*gitlab.Group) bool {
 		return allow == slices.Contains(n, u.Username)
 	}
-	result := &userRule{
-		e: exp,
-		u: logic,
-	}
 
-	return result
+	return AccessRulerFunc(result)
 }
 
-func UserNameRequirement(n []string) UserRuler {
-	return newUserNameRule(n, true, ExplainUserNameRequire)
+func UserNameRequirement(n []string) AccessRuler {
+	return newUserNameRule(n, true)
 }
 
-func UserNameRejection(n []string) UserRuler {
-	return newUserNameRule(n, false, ExplainUserNameReject)
+func UserNameRejection(n []string) AccessRuler {
+	return newUserNameRule(n, false)
 }
 
 func init() {
-	User2FARequirement = &userRule{
-		e: ExplainUser2FARequire,
-		u: func(u *gitlab.User) bool {
-			return u.TwoFactorEnabled
-		},
-	}
-	UserBotRejection = &userRule{
-		e: ExplainUserBotReject,
-		u: func(u *gitlab.User) bool {
-			return u.Bot
-		},
-	}
-	UserLockedRejection = &userRule{
-		e: ExplainUserLockedReject,
-		u: func(u *gitlab.User) bool {
-			return !u.Locked
-		},
-	}
-	UserPristineRejection = &userRule{
-		e: ExplainUserPristineReject,
-		u: func(u *gitlab.User) bool {
-			return u.ConfirmedAt != nil
-		},
-	}
+	UserDefaultRequirement = AccessRulerFunc(func(_ *gitlab.User, _ []*gitlab.Group) bool {
+		return true
+	})
+	UserDefaultRejection = AccessRulerFunc(func(_ *gitlab.User, _ []*gitlab.Group) bool {
+		return false
+	})
+	User2FARequirement = AccessRulerFunc(func(u *gitlab.User, _ []*gitlab.Group) bool {
+		return u.TwoFactorEnabled
+	})
+	UserBotRejection = AccessRulerFunc(func(u *gitlab.User, _ []*gitlab.Group) bool {
+		return !u.Bot
+	})
+	UserLockedRejection = AccessRulerFunc(func(u *gitlab.User, _ []*gitlab.Group) bool {
+		return !u.Locked
+	})
+	UserPristineRejection = AccessRulerFunc(func(u *gitlab.User, _ []*gitlab.Group) bool {
+		return u.ConfirmedAt != nil
+	})
 }

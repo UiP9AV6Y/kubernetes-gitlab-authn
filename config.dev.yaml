@@ -5,18 +5,18 @@ gitlab:
   port: 8080
   tls: ~
   realm_acls:
-    '':
-      # default realm
+    '': # default realm
       - &common_acls
         reject_locked: true
         reject_pristine: true
-    enclave:
+    enclave: # multiple authz conditions
       # require 2FA set up
       - require_2fa: true
         <<: *common_acls
       # OR members of admin group
-      - require_groups: [ core/admins ]
+      - require_groups: [ core-admins ]
         <<: *common_acls
+    lockdown: [] # noone is getting in
 
 server:
   port: 8080

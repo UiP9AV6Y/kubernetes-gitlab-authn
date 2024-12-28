@@ -1,58 +1,45 @@
 package access
 
 import (
-	"fmt"
-
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
-type UserRulers []UserRuler
+type AccessRuler interface {
+	Authorize(*gitlab.User, []*gitlab.Group) bool
+}
 
-func (rs UserRulers) AuthorizeUser(user *gitlab.User) bool {
-	for _, r := range rs {
-		if !r.AuthorizeUser(user) {
+type AccessRulerFunc func(*gitlab.User, []*gitlab.Group) bool
+
+func (f AccessRulerFunc) Authorize(u *gitlab.User, g []*gitlab.Group) bool {
+	return f(u, g)
+}
+
+// AnyAccessRulers is a multi-rule evaluator which requires just
+// a single requirement to succeed. It returns on the first match.
+// It returns false if no rules apply.
+type AnyAccessRulers []AccessRuler
+
+func (a AnyAccessRulers) Authorize(user *gitlab.User, groups []*gitlab.Group) bool {
+	for _, r := range a {
+		if r.Authorize(user, groups) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// AllAccessRulers is a multi-rule evaluator which requires for all
+// requirements to be satisfied. It bails on the first violation.
+// It returns true if no rules exist.
+type AllAccessRulers []AccessRuler
+
+func (a AllAccessRulers) Authorize(user *gitlab.User, groups []*gitlab.Group) bool {
+	for _, r := range a {
+		if !r.Authorize(user, groups) {
 			return false
 		}
 	}
 
 	return true
-}
-
-type UserRealmRuler map[string][]UserRuler
-
-func NewDefaultUserRealmRuler(rules ...UserRuler) UserRealmRuler {
-	result := map[string][]UserRuler{
-		"": rules,
-	}
-
-	return result
-}
-
-func (a UserRealmRuler) AuthorizeUser(realm string, user *gitlab.User) error {
-	err := a.authorize(realm, user)
-	if err != nil {
-		return err
-	}
-
-	_, hasDefaultRealm := a[""]
-	if realm != "" && hasDefaultRealm {
-		return a.authorize("", user)
-	}
-
-	return nil
-}
-
-func (a UserRealmRuler) authorize(realm string, user *gitlab.User) error {
-	rules, ok := a[realm]
-	if !ok {
-		return fmt.Errorf("No such authentication realm %q", realm)
-	}
-
-	for _, r := range rules {
-		if !r.AuthorizeUser(user) {
-			return fmt.Errorf("user %q is not authorized to access realm %q: %s", user.Username, realm, r.Explain())
-		}
-	}
-
-	return nil
 }

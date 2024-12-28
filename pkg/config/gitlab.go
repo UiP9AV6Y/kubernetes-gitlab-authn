@@ -24,16 +24,16 @@ type GitlabAccessRules struct {
 	RequireUsers []string `json:"require_users"`
 	// Reject users based on their username
 	RejectUsers []string `json:"reject_users"`
-	// Require membership of at least one of these groups
+	// Require membership of all of these groups
 	RequireGroups []string `json:"require_groups"`
-	// Reject members of the given groups
+	// Reject members of any of the given groups
 	RejectGroups []string `json:"reject_groups"`
 }
 
-func (r *GitlabAccessRules) UserRules() (result []access.UserRuler) {
-	result = []access.UserRuler{}
+func (r *GitlabAccessRules) UserRules() access.AccessRuler {
+	result := []access.AccessRuler{}
 	if r == nil {
-		return
+		return access.AllAccessRulers(result)
 	}
 
 	if r.Require2FA {
@@ -60,7 +60,26 @@ func (r *GitlabAccessRules) UserRules() (result []access.UserRuler) {
 		result = append(result, access.UserNameRejection(r.RejectUsers))
 	}
 
-	return
+	if r.RequireGroups != nil {
+		result = append(result, access.AllGroupNameRequirement(r.RejectUsers))
+	}
+
+	if r.RejectGroups != nil {
+		result = append(result, access.AnyGroupNameRejection(r.RejectUsers))
+	}
+
+	return access.AllAccessRulers(result)
+}
+
+type GitlabAccessMultiRules []*GitlabAccessRules
+
+func (r GitlabAccessMultiRules) UserRules() access.AccessRuler {
+	result := make([]access.AccessRuler, len(r))
+	for i, u := range r {
+		result[i] = u.UserRules()
+	}
+
+	return access.AnyAccessRulers(result)
 }
 
 type GitlabGroupFilter struct {
@@ -73,9 +92,9 @@ type GitlabGroupFilter struct {
 type Gitlab struct {
 	Server `json:",inline"`
 
-	AttributesAsGroups bool                          `json:"attributes_as_groups"`
-	GroupFilter        GitlabGroupFilter             `json:"group_filter"`
-	RealmACLs          map[string]*GitlabAccessRules `json:"realm_acls"`
+	AttributesAsGroups bool                              `json:"attributes_as_groups"`
+	GroupFilter        GitlabGroupFilter                 `json:"group_filter"`
+	RealmACLs          map[string]GitlabAccessMultiRules `json:"realm_acls"`
 }
 
 func NewGitlab() *Gitlab {
@@ -90,13 +109,23 @@ func NewGitlab() *Gitlab {
 	return result
 }
 
-func (g *Gitlab) UserAccessControlList() access.UserRealmRuler {
-	acls := make(map[string][]access.UserRuler, len(g.RealmACLs))
+func (g *Gitlab) UserAccessControlList() (acls map[string]access.AccessRuler) {
+	if len(g.RealmACLs) == 0 {
+		// allow anyone into the default realm
+		// if nothing has been configured
+		acls = map[string]access.AccessRuler{
+			"": access.UserDefaultRequirement,
+		}
+
+		return
+	}
+
+	acls = make(map[string]access.AccessRuler, len(g.RealmACLs))
 	for realm, rules := range g.RealmACLs {
 		acls[realm] = rules.UserRules()
 	}
 
-	return access.UserRealmRuler(acls)
+	return
 }
 
 func (g *Gitlab) HTTPClient() (client *http.Client, err error) {
