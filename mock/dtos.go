@@ -7,8 +7,12 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
-// simulated time of confirmation
-var now = time.Now()
+var (
+	// simulated time of confirmation
+	confirmed = time.Now()
+	// simulated time of creation
+	created = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+)
 
 // User provider property
 var userProvider = "gitlab-mock"
@@ -30,7 +34,8 @@ var (
 		Name:             "Admin User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
-		ConfirmedAt:      &now,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
 		IsAdmin:          true,
 	}
 	mockUser = gitlab.User{
@@ -40,7 +45,8 @@ var (
 		Name:             "Mock User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
-		ConfirmedAt:      &now,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
 	}
 	secureUser = gitlab.User{
 		ID:               3456,
@@ -49,7 +55,8 @@ var (
 		Name:             "Secure User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
-		ConfirmedAt:      &now,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
 		TwoFactorEnabled: true,
 	}
 	externalUser = gitlab.User{
@@ -59,7 +66,8 @@ var (
 		Name:             "External User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
-		ConfirmedAt:      &now,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
 		External:         true,
 	}
 	botUser = gitlab.User{
@@ -69,7 +77,8 @@ var (
 		Name:             "Bot User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
-		ConfirmedAt:      &now,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
 		Bot:              true,
 	}
 	lockedUser = gitlab.User{
@@ -79,7 +88,8 @@ var (
 		Name:             "Locked User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
-		ConfirmedAt:      &now,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
 		Locked:           true,
 	}
 	pristineUser = gitlab.User{
@@ -89,33 +99,53 @@ var (
 		Name:             "Pristine User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CreatedAt:        &created,
 	}
 )
 
 // group models
 var (
 	coreGroup = gitlab.Group{
-		ID:   1,
-		Name: "Core",
-		Path: "core",
+		ID:         1,
+		Name:       "Core",
+		Path:       "core",
+		FullName:   "core",
+		FullPath:   "core",
+		CreatedAt:  &created,
+		Visibility: gitlab.PublicVisibility,
 	}
 	adminGroup = gitlab.Group{
-		ID:   		11,
-		Name: 		"Administrators",
-		Path: 		"core-admins",
-		ParentID: 1,
+		ID:          11,
+		ParentID:    1,
+		Description: "Operators, SREs, and maintenance staff",
+		Name:        "Administrators",
+		Path:        "admins",
+		FullName:    "core / admins",
+		FullPath:    "core/admins",
+		CreatedAt:   &created,
+		Visibility:  gitlab.PrivateVisibility,
 	}
 	userGroup = gitlab.Group{
-		ID:   		12,
-		Name: 		"Users",
-		Path: 		"core-users",
-		ParentID: 1,
+		ID:          12,
+		ParentID:    1,
+		Description: "Regular users",
+		Name:        "Users",
+		Path:        "core-users",
+		FullName:    "core / users",
+		FullPath:    "core/users",
+		CreatedAt:   &created,
+		Visibility:  gitlab.InternalVisibility,
 	}
 	specialGroup = gitlab.Group{
-		ID:   		13,
-		Name: 		"Non-conformant attributes",
-		Path: 		"core-special",
-		ParentID: 1,
+		ID:          13,
+		ParentID:    1,
+		Description: "Users with one or more special attributes set to TRUE",
+		Name:        "Non-conformant attributes",
+		Path:        "special",
+		FullName:    "core / special",
+		FullPath:    "core/special",
+		CreatedAt:   &created,
+		Visibility:  gitlab.InternalVisibility,
 	}
 )
 
