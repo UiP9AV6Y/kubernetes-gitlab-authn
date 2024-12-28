@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
@@ -172,7 +173,7 @@ func (h *AuthHandler) UserInfo(user *gitlab.User, groups []*gitlab.Group) authen
 	}
 
 	for i, g := range groups {
-		gids[i] = g.Path
+		gids[i] = strings.Replace(g.FullPath, "/", ":")
 	}
 
 	extra := userAttributeExtra(user)
