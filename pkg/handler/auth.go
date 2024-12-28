@@ -29,6 +29,13 @@ var (
 const (
 	KindTokenReview                 = "TokenReview"
 	DefaultAuthenticationAPIVersion = "authentication.k8s.io/v1"
+
+	// GitlabKeyNamespace is the key namespace used in a user's "extra"
+	// to represent the various Gitlab specific account attributes
+	GitlabKeyNamespace = "gitlab-authn.kubernetes.io/"
+	// GitlabAttributesKey is the key used in a user's "extra" to specify
+	// the Gitlab specific account attributes
+	GitlabAttributesKey = GitlabKeyNamespace + "user-attributes"
 )
 
 type AuthHandlerOpts struct {
@@ -210,35 +217,32 @@ func userAttributeGroups(user *gitlab.User) []string {
 }
 
 func userAttributeExtra(user *gitlab.User) map[string]authentication.ExtraValue {
+	attrs := make([]string, 0, 5)
+	if user.TwoFactorEnabled {
+		attrs = append(attrs, "2fa")
+	}
+	if user.Bot {
+		attrs = append(attrs, "bot")
+	}
+	if user.IsAdmin {
+		attrs = append(attrs, "admin")
+	}
+	if user.IsAuditor {
+		attrs = append(attrs, "auditor")
+	}
+	if user.External {
+		attrs = append(attrs, "external")
+	}
+
 	extra := map[string]authentication.ExtraValue{
-		"gitlab-2fa":       boolExtraValue(user.TwoFactorEnabled),
-		"gitlab-bot":       boolExtraValue(user.Bot),
-		"gitlab-admin":     boolExtraValue(user.IsAdmin),
-		"gitlab-auditor":   boolExtraValue(user.IsAuditor),
-		"gitlab-external":  boolExtraValue(user.External),
-		"gitlab-namespace": intExtraValue(user.NamespaceID),
+		GitlabAttributesKey: attrs,
 	}
 
 	for _, attr := range user.CustomAttributes {
-		extra[attr.Key] = stringExtraValue(attr.Value)
+		extra[GitlabKeyNamespace+attr.Key] = []string{attr.Value}
 	}
 
 	return extra
-}
-
-func stringExtraValue(s string) authentication.ExtraValue {
-	v := []string{s}
-	return authentication.ExtraValue(v)
-}
-
-func boolExtraValue(b bool) authentication.ExtraValue {
-	v := []string{strconv.FormatBool(b)}
-	return authentication.ExtraValue(v)
-}
-
-func intExtraValue(i int) authentication.ExtraValue {
-	v := []string{strconv.FormatInt(int64(i), 10)}
-	return authentication.ExtraValue(v)
 }
 
 func (h *AuthHandler) rejectReview(w http.ResponseWriter, header meta.TypeMeta, err string) {
