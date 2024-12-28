@@ -190,19 +190,19 @@ func userAttributeGroups(user *gitlab.User) []string {
 	groups := make([]string, 0, 5)
 
 	if user.TwoFactorEnabled {
-		groups = append(groups, "gitlab::2fa")
+		groups = append(groups, "gitlab:2fa")
 	}
 	if user.Bot {
-		groups = append(groups, "gitlab::bot")
+		groups = append(groups, "gitlab:bot")
 	}
 	if user.IsAdmin {
-		groups = append(groups, "gitlab::admin")
+		groups = append(groups, "gitlab:admin")
 	}
 	if user.IsAuditor {
-		groups = append(groups, "gitlab::auditor")
+		groups = append(groups, "gitlab:auditor")
 	}
 	if user.External {
-		groups = append(groups, "gitlab::external")
+		groups = append(groups, "gitlab:external")
 	}
 
 	return groups
