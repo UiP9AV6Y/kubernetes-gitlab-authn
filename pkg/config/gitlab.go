@@ -6,81 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
+	"gitlab.com/gitlab-org/api/client-go"
 )
-
-type GitlabAccessRules struct {
-	// Reject users without 2FA set up
-	Require2FA bool `json:"require_2fa"`
-	// Reject users marked as robots
-	RejectBots bool `json:"reject_bots"`
-	// Reject users in locked state
-	RejectLocked bool `json:"reject_locked"`
-	// Reject users which have not confirmed their account yet
-	RejectPristine bool `json:"reject_pristine"`
-	// Only allow users with the given usernames
-	RequireUsers []string `json:"require_users"`
-	// Reject users based on their username
-	RejectUsers []string `json:"reject_users"`
-	// Require membership of all of these groups
-	RequireGroups []string `json:"require_groups"`
-	// Reject members of any of the given groups
-	RejectGroups []string `json:"reject_groups"`
-}
-
-func (r *GitlabAccessRules) UserRules() access.AccessRuler {
-	result := []access.AccessRuler{}
-	if r == nil {
-		return access.AllAccessRulers(result)
-	}
-
-	if r.Require2FA {
-		result = append(result, access.User2FARequirement)
-	}
-
-	if r.RejectBots {
-		result = append(result, access.UserBotRejection)
-	}
-
-	if r.RejectLocked {
-		result = append(result, access.UserLockedRejection)
-	}
-
-	if r.RejectPristine {
-		result = append(result, access.UserPristineRejection)
-	}
-
-	if r.RequireUsers != nil {
-		result = append(result, access.UserNameRequirement(r.RequireUsers))
-	}
-
-	if r.RejectUsers != nil {
-		result = append(result, access.UserNameRejection(r.RejectUsers))
-	}
-
-	if r.RequireGroups != nil {
-		result = append(result, access.AllGroupNameRequirement(r.RejectUsers))
-	}
-
-	if r.RejectGroups != nil {
-		result = append(result, access.AnyGroupNameRejection(r.RejectUsers))
-	}
-
-	return access.AllAccessRulers(result)
-}
-
-type GitlabAccessMultiRules []*GitlabAccessRules
-
-func (r GitlabAccessMultiRules) UserRules() access.AccessRuler {
-	result := make([]access.AccessRuler, len(r))
-	for i, u := range r {
-		result[i] = u.UserRules()
-	}
-
-	return access.AnyAccessRulers(result)
-}
 
 type GitlabGroupFilter struct {
 	OwnedOnly      bool                    `json:"owned_only"`
@@ -92,9 +19,8 @@ type GitlabGroupFilter struct {
 type Gitlab struct {
 	Server `json:",inline"`
 
-	AttributesAsGroups bool                              `json:"attributes_as_groups"`
-	GroupFilter        GitlabGroupFilter                 `json:"group_filter"`
-	RealmACLs          map[string]GitlabAccessMultiRules `json:"realm_acls"`
+	AttributesAsGroups bool              `json:"attributes_as_groups"`
+	GroupFilter        GitlabGroupFilter `json:"group_filter"`
 }
 
 func NewGitlab() *Gitlab {
@@ -107,25 +33,6 @@ func NewGitlab() *Gitlab {
 	result.GroupFilter.MinAccessLevel = gitlab.MinimalAccessPermissions
 
 	return result
-}
-
-func (g *Gitlab) UserAccessControlList() (acls map[string]access.AccessRuler) {
-	if len(g.RealmACLs) == 0 {
-		// allow anyone into the default realm
-		// if nothing has been configured
-		acls = map[string]access.AccessRuler{
-			"": access.UserDefaultRequirement,
-		}
-
-		return
-	}
-
-	acls = make(map[string]access.AccessRuler, len(g.RealmACLs))
-	for realm, rules := range g.RealmACLs {
-		acls[realm] = rules.UserRules()
-	}
-
-	return
 }
 
 func (g *Gitlab) HTTPClient() (client *http.Client, err error) {

@@ -7,36 +7,26 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	authentication "k8s.io/api/authentication/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/UiP9AV6Y/go-k8s-user-authz"
+	"github.com/UiP9AV6Y/go-k8s-user-authz/userinfo"
+
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 )
 
 var (
-	ErrUserLocked      = errors.New("User is locked")
-	ErrUserUnconfirmed = errors.New("User has not yet confirmed their account")
-	ErrUserRobot       = errors.New("Robot access has been denied")
-	ErrUser2FA         = errors.New("User does not have 2FA set up")
-	ErrMissingToken    = errors.New("Missing token")
+	ErrMissingToken = errors.New("Missing token")
 )
 
 const (
 	KindTokenReview                 = "TokenReview"
 	DefaultAuthenticationAPIVersion = "authentication.k8s.io/v1"
-
-	// GitlabKeyNamespace is the key namespace used in a user's "extra"
-	// to represent the various Gitlab specific account attributes
-	GitlabKeyNamespace = "gitlab-authn.kubernetes.io/"
-	// GitlabAttributesKey is the key used in a user's "extra" to specify
-	// the Gitlab specific account attributes
-	GitlabAttributesKey = GitlabKeyNamespace + "user-attributes"
 )
 
 type AuthHandlerOpts struct {
@@ -47,12 +37,12 @@ type AuthHandlerOpts struct {
 	GroupsMinAccessLevel gitlab.AccessLevelValue
 	GroupsFilter         string
 
-	UserACLs map[string]access.AccessRuler
+	UserACLs map[string]userauthz.Authorizer
 }
 
 func NewAuthHandlerOpts() *AuthHandlerOpts {
-	acls := map[string]access.AccessRuler{
-		"": access.UserDefaultRequirement,
+	acls := map[string]userauthz.Authorizer{
+		"": userauthz.AlwaysAllowAuthorizer,
 	}
 	result := &AuthHandlerOpts{
 		GroupsMinAccessLevel: gitlab.MinimalAccessPermissions,
@@ -88,7 +78,7 @@ type AuthHandler struct {
 	listGroups *gitlab.ListGroupsOptions
 	attrGroups bool
 
-	userAuth map[string]access.AccessRuler
+	userAuth map[string]userauthz.Authorizer
 }
 
 func NewAuthHandler(client *gitlab.Client, logger *log.Adapter, opts *AuthHandlerOpts) (*AuthHandler, error) {
@@ -118,7 +108,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, g, err := h.Authenticate(r.Context(), t)
+	u, g, err := h.authenticate(r.Context(), t)
 	if err != nil {
 		h.logger.Info("Authentication failed", "user", u.Username, "err", err)
 		w.WriteHeader(http.StatusUnauthorized)
@@ -127,7 +117,8 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := r.PathValue("realm")
-	err = h.Authorize(u, g, s)
+	i := access.UserInfo(u, g, h.attrGroups)
+	err = h.authorize(r.Context(), s, i)
 	if err != nil {
 		h.logger.Info("Authorization failed", "user", u.Username, "realm", s, "err", err)
 		w.WriteHeader(http.StatusUnauthorized)
@@ -135,13 +126,12 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	i := h.UserInfo(u, g)
-	h.logger.Info("Authentication accepted", "user", u.Username)
+	h.logger.Info("Authentication accepted", "user", u.Username, "realm", s)
 	w.WriteHeader(http.StatusOK)
 	h.acceptReview(w, m, i)
 }
 
-func (h *AuthHandler) Authenticate(ctx context.Context, token string) (user *gitlab.User, groups []*gitlab.Group, err error) {
+func (h *AuthHandler) authenticate(ctx context.Context, token string) (user *gitlab.User, groups []*gitlab.Group, err error) {
 	user, _, err = h.client.Users.CurrentUser(
 		gitlab.WithContext(ctx),
 		gitlab.WithToken(gitlab.PrivateToken, token),
@@ -164,94 +154,19 @@ func (h *AuthHandler) Authenticate(ctx context.Context, token string) (user *git
 	return
 }
 
-func (h *AuthHandler) Authorize(user *gitlab.User, groups []*gitlab.Group, realm string) error {
+func (h *AuthHandler) authorize(ctx context.Context, realm string, user authentication.UserInfo) error {
 	userAuth, ok := h.userAuth[realm]
 	if !ok {
 		return fmt.Errorf("No such authentication realm %q", realm)
 	}
 
-	ok = userAuth.Authorize(user, groups)
-	if !ok {
+	info := userinfo.NewV1UserInfo(user)
+	decision := userAuth.Authorize(ctx, info)
+	if decision != userauthz.DecisionAllow {
 		return fmt.Errorf("user %q is not authorized to access realm %q", user.Username, realm)
 	}
 
 	return nil
-}
-
-func (h *AuthHandler) UserInfo(user *gitlab.User, groups []*gitlab.Group) authentication.UserInfo {
-	var gids []string
-	if h.attrGroups {
-		agids := userAttributeGroups(user)
-		gids = make([]string, len(groups), len(groups)+len(agids))
-		gids = append(gids, agids...)
-	} else {
-		gids = make([]string, len(groups))
-	}
-
-	for i, g := range groups {
-		gids[i] = strings.ReplaceAll(g.FullPath, "/", ":")
-	}
-
-	extra := userAttributeExtra(user)
-	info := authentication.UserInfo{
-		Username: user.Username,
-		UID:      strconv.FormatInt(int64(user.ID), 10),
-		Groups:   gids,
-		Extra:    extra,
-	}
-
-	return info
-}
-
-func userAttributeGroups(user *gitlab.User) []string {
-	groups := make([]string, 0, 5)
-
-	if user.TwoFactorEnabled {
-		groups = append(groups, "gitlab:2fa")
-	}
-	if user.Bot {
-		groups = append(groups, "gitlab:bot")
-	}
-	if user.IsAdmin {
-		groups = append(groups, "gitlab:admin")
-	}
-	if user.IsAuditor {
-		groups = append(groups, "gitlab:auditor")
-	}
-	if user.External {
-		groups = append(groups, "gitlab:external")
-	}
-
-	return groups
-}
-
-func userAttributeExtra(user *gitlab.User) map[string]authentication.ExtraValue {
-	attrs := make([]string, 0, 5)
-	if user.TwoFactorEnabled {
-		attrs = append(attrs, "2fa")
-	}
-	if user.Bot {
-		attrs = append(attrs, "bot")
-	}
-	if user.IsAdmin {
-		attrs = append(attrs, "admin")
-	}
-	if user.IsAuditor {
-		attrs = append(attrs, "auditor")
-	}
-	if user.External {
-		attrs = append(attrs, "external")
-	}
-
-	extra := map[string]authentication.ExtraValue{
-		GitlabAttributesKey: attrs,
-	}
-
-	for _, attr := range user.CustomAttributes {
-		extra[GitlabKeyNamespace+attr.Key] = []string{attr.Value}
-	}
-
-	return extra
 }
 
 func (h *AuthHandler) rejectReview(w http.ResponseWriter, header meta.TypeMeta, err string) {

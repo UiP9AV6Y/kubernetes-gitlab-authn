@@ -39,7 +39,7 @@ func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Con
 		GroupsTopLevelOnly:   cfg.Gitlab.GroupFilter.TopLevelOnly,
 		GroupsMinAccessLevel: cfg.Gitlab.GroupFilter.MinAccessLevel,
 		GroupsFilter:         cfg.Gitlab.GroupFilter.Name,
-		UserACLs:             cfg.Gitlab.UserAccessControlList(),
+		UserACLs:             cfg.Realms.UserAccessControlList(),
 	}
 	authHandler, err := handler.NewAuthHandler(apiClient, logger, authOpts)
 	if err != nil {

@@ -12,6 +12,7 @@ const (
 )
 
 type Config struct {
+	Realms  Realms   `json:"realms"`
 	Gitlab  *Gitlab  `json:"gitlab"`
 	Server  *Server  `json:"server"`
 	Health  *Health  `json:"health"`
@@ -21,6 +22,7 @@ type Config struct {
 
 func New() *Config {
 	result := &Config{
+		Realms:  NewRealms(),
 		Gitlab:  NewGitlab(),
 		Server:  NewServer(),
 		Health:  NewHealth(),

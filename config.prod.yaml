@@ -1,9 +1,5 @@
 ---
 
-gitlab:
-  realm_acls:
-    '':
-      - reject_locked: true
 server:
   port: 8080
 health:
