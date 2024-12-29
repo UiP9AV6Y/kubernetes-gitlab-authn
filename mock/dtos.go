@@ -59,8 +59,19 @@ var (
 		CreatedAt:        &created,
 		TwoFactorEnabled: true,
 	}
-	externalUser = gitlab.User{
+	privateUser = gitlab.User{
 		ID:               4321,
+		Username:         "private",
+		Email:            "private@localhost.localdomain",
+		Name:             "Private User",
+		Provider:         userProvider,
+		CustomAttributes: customUserAttributes,
+		ConfirmedAt:      &confirmed,
+		CreatedAt:        &created,
+		PrivateProfile:   true,
+	}
+	externalUser = gitlab.User{
+		ID:               5050,
 		Username:         "external",
 		Email:            "external@localhost.localdomain",
 		Name:             "External User",
@@ -71,7 +82,7 @@ var (
 		External:         true,
 	}
 	botUser = gitlab.User{
-		ID:               5050,
+		ID:               6443,
 		Username:         "bot",
 		Email:            "bot@localhost.localdomain",
 		Name:             "Bot User",
@@ -82,7 +93,7 @@ var (
 		Bot:              true,
 	}
 	lockedUser = gitlab.User{
-		ID:               6443,
+		ID:               7890,
 		Username:         "locked",
 		Email:            "locked@localhost.localdomain",
 		Name:             "Locked User",
@@ -93,7 +104,7 @@ var (
 		Locked:           true,
 	}
 	pristineUser = gitlab.User{
-		ID:               7890,
+		ID:               8080,
 		Username:         "pristine",
 		Email:            "pristine@localhost.localdomain",
 		Name:             "Pristine User",
@@ -154,6 +165,7 @@ var (
 	pkAdmin    = "ADMIN"
 	pkMock     = "MOCK"
 	pkSecure   = "SECURE"
+	pkPrivate  = "PRIVATE"
 	pkExternal = "EXTERNAl"
 	pkBot      = "BOT"
 	pkLocked   = "LOCKED"
@@ -162,6 +174,7 @@ var (
 		pkAdmin,
 		pkMock,
 		pkSecure,
+		pkPrivate,
 		pkExternal,
 		pkBot,
 		pkLocked,
@@ -180,6 +193,7 @@ func init() {
 	userDAO[pkAdmin] = adminUser
 	userDAO[pkMock] = mockUser
 	userDAO[pkSecure] = secureUser
+	userDAO[pkPrivate] = privateUser
 	userDAO[pkExternal] = externalUser
 	userDAO[pkBot] = botUser
 	userDAO[pkLocked] = lockedUser
@@ -198,6 +212,7 @@ func init() {
 	groupDAO[pkAdmin] = adminGroups
 	groupDAO[pkMock] = userGroups
 	groupDAO[pkSecure] = userGroups
+	groupDAO[pkPrivate] = userGroups
 	groupDAO[pkExternal] = specialGroups
 	groupDAO[pkBot] = specialGroups
 	groupDAO[pkLocked] = specialGroups
