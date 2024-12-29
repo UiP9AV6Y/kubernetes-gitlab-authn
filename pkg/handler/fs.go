@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/version"
 )
 
@@ -49,7 +48,7 @@ type FilesystemHandler struct {
 	modtime     time.Time
 }
 
-func NewFilesystemHandler(dir string, logger *log.Adapter, opts *FilesystemHandlerOpts) (*FilesystemHandler, error) {
+func NewFilesystemHandler(dir string, opts *FilesystemHandlerOpts) (*FilesystemHandler, error) {
 	if opts == nil {
 		opts = NewFilesystemHandlerOpts()
 	}

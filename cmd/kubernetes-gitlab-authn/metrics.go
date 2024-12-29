@@ -6,11 +6,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/UiP9AV6Y/go-slog-adapter"
+
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 )
 
-func newMetricsRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Metrics) (http.Handler, error) {
+func newMetricsRouter(reg *prometheus.Registry, logger *slogadapter.SlogAdapter, cfg *config.Metrics) (http.Handler, error) {
 	router := http.NewServeMux()
 	opts := promhttp.HandlerOpts{
 		ErrorLog:            logger,

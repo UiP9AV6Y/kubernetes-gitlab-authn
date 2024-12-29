@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/UiP9AV6Y/go-slog-adapter"
+
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 )
 
-func newHealthRouter(_ *log.Adapter, cfg *config.Health) (http.Handler, error) {
+func newHealthRouter(_ *slogadapter.SlogAdapter, cfg *config.Health) (http.Handler, error) {
 	router := http.NewServeMux()
 	handler := func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(w, "OK")

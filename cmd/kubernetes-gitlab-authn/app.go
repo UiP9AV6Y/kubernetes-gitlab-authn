@@ -7,12 +7,13 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
+	"github.com/UiP9AV6Y/go-slog-adapter"
+
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/handler"
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 )
 
-func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Config) (http.Handler, error) {
+func newAppRouter(reg *prometheus.Registry, logger *slogadapter.SlogAdapter, cfg *config.Config) (http.Handler, error) {
 	router := http.NewServeMux()
 	baseURL, err := cfg.Gitlab.URL()
 	if err != nil {
@@ -27,7 +28,7 @@ func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Con
 	apiClient, err := gitlab.NewClient("",
 		gitlab.WithBaseURL(baseURL.String()),
 		gitlab.WithHTTPClient(httpClient),
-		gitlab.WithCustomLeveledLogger(logger),
+		gitlab.WithCustomLeveledLogger(logger.Logger()),
 	)
 	if err != nil {
 		return nil, err
@@ -41,7 +42,7 @@ func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Con
 		GroupsFilter:         cfg.Gitlab.GroupFilter.Name,
 		UserACLs:             cfg.Realms.UserAccessControlList(),
 	}
-	authHandler, err := handler.NewAuthHandler(apiClient, logger, authOpts)
+	authHandler, err := handler.NewAuthHandler(apiClient, logger.Logger(), authOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func newAppRouter(reg *prometheus.Registry, logger *log.Adapter, cfg *config.Con
 	webOpts := handler.NewFilesystemHandlerOpts()
 	webOpts.GitlabURL = baseURL
 	webOpts.Description = cfg.Web.Description
-	webHandler, err := handler.NewFilesystemHandler(cfg.Web.Path, logger, webOpts)
+	webHandler, err := handler.NewFilesystemHandler(cfg.Web.Path, webOpts)
 	if err != nil {
 		return nil, err
 	}

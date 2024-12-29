@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
@@ -17,7 +18,6 @@ import (
 	"github.com/UiP9AV6Y/go-k8s-user-authz/userinfo"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 )
 
 var (
@@ -74,14 +74,14 @@ func (o *AuthHandlerOpts) ListGroupsOptions() *gitlab.ListGroupsOptions {
 
 type AuthHandler struct {
 	client     *gitlab.Client
-	logger     *log.Adapter
+	logger     *slog.Logger
 	listGroups *gitlab.ListGroupsOptions
 	attrGroups bool
 
 	userAuth map[string]userauthz.Authorizer
 }
 
-func NewAuthHandler(client *gitlab.Client, logger *log.Adapter, opts *AuthHandlerOpts) (*AuthHandler, error) {
+func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandlerOpts) (*AuthHandler, error) {
 	if opts == nil {
 		opts = NewAuthHandlerOpts()
 	}

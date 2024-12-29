@@ -20,8 +20,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/UiP9AV6Y/go-slog-adapter"
+
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/log"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/version"
 )
@@ -37,7 +38,7 @@ func newHTTPServer(h http.Handler, ctx context.Context) *http.Server {
 	return result
 }
 
-func runServers(name string, config *config.Config, logger *slog.Logger) (err error) {
+func runServers(name string, config *config.Config, logger *slogadapter.SlogAdapter) (err error) {
 	var router http.Handler
 	var server *http.Server
 
@@ -45,10 +46,9 @@ func runServers(name string, config *config.Config, logger *slog.Logger) (err er
 	defer stop()
 
 	registry := prometheus.NewRegistry()
-	adapter := log.NewAdapter(logger, slog.LevelWarn)
 	tasks, tasksCtx := errgroup.WithContext(mainCtx)
 	servers := &serverManager{
-		logger: logger,
+		logger: logger.Logger(),
 		ctx:    tasksCtx,
 	}
 
@@ -58,7 +58,7 @@ func runServers(name string, config *config.Config, logger *slog.Logger) (err er
 		return
 	}
 
-	router, err = newAppRouter(registry, adapter, config)
+	router, err = newAppRouter(registry, logger, config)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func runServers(name string, config *config.Config, logger *slog.Logger) (err er
 	queue := []serverTask{bootup, shutdown}
 
 	if config.Metrics.Port > 0 {
-		router, err = newMetricsRouter(registry, adapter, config.Metrics)
+		router, err = newMetricsRouter(registry, logger, config.Metrics)
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,7 @@ func runServers(name string, config *config.Config, logger *slog.Logger) (err er
 	}
 
 	if config.Health.Port > 0 {
-		router, err = newHealthRouter(adapter, config.Health)
+		router, err = newHealthRouter(logger, config.Health)
 		if err != nil {
 			return err
 		}
@@ -101,14 +101,48 @@ func runServers(name string, config *config.Config, logger *slog.Logger) (err er
 	return nil
 }
 
+func newLogger(w io.Writer, level, format string) (logger *slog.Logger, lvl slog.Level, err error) {
+	err = (&lvl).UnmarshalText([]byte(level))
+	if err != nil {
+		return
+	}
+
+	opts := &slog.HandlerOptions{Level: lvl}
+	if format == "json" {
+		logger = slog.New(slog.NewJSONHandler(w, opts))
+		return
+	} else if format == "text" {
+		logger = slog.New(slog.NewTextHandler(w, opts))
+		return
+	}
+
+	err = fmt.Errorf("unsupported log format %q", format)
+	return
+}
+
+func env(key, fallback string) string {
+	v := os.Getenv("GITLAB_AUTHN_" + key)
+	if v == "" {
+		return fallback
+	}
+
+	return v
+}
+
 func run(o, e io.Writer, argv ...string) int {
 	name := filepath.Base(argv[0])
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	ver := fs.Bool("version", false, "Print the version number and exit")
-	cfg := fs.String("config", config.Path, "Configuration file location")
+	cfg := fs.String("config", env("CONFIG", config.Path), "Configuration file location. ($GITLAB_AUTHN_CONFIG)")
+	llv := fs.String("log.level", env("LOG_LEVEL", "info"), "Log level. Valid values include debug, info, warn, and error ($GITLAB_AUTHN_LOG_LEVEL)")
+	lfm := fs.String("log.format", env("LOG_FORMAT", "text"), "Log format. Valid values include text, and json ($GITLAB_AUTHN_LOG_FORMAT)")
 	settings := config.New()
 
 	if err := fs.Parse(argv[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+
 		fmt.Fprintf(e, "%s, try --help\n", err)
 		return 1
 	}
@@ -118,7 +152,11 @@ func run(o, e io.Writer, argv ...string) int {
 		return 0
 	}
 
-	logger := log.New(o)
+	logger, lvl, err := newLogger(o, *llv, *lfm)
+	if err != nil {
+		fmt.Fprintf(e, "%s, try --help\n", err)
+		return 1
+	}
 
 	if configPath := *cfg; configPath != "" {
 		logger.Debug("Parsing configuration file", "path", configPath)
@@ -128,7 +166,8 @@ func run(o, e io.Writer, argv ...string) int {
 		}
 	}
 
-	if err := runServers(name, settings, logger); err != nil {
+	adapter := slogadapter.New(logger, lvl)
+	if err := runServers(name, settings, adapter); err != nil {
 		logger.Error("Application terminated", "err", err)
 		return 1
 	}

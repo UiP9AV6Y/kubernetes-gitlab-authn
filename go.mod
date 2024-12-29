@@ -6,7 +6,7 @@ require (
 	github.com/UiP9AV6Y/buildinfo v0.0.0-20240316121816-2a0a49f5d3c2
 	github.com/UiP9AV6Y/buildinfo/prometheus v0.0.0-20240316121816-2a0a49f5d3c2
 	github.com/UiP9AV6Y/go-k8s-user-authz v0.2.0
-	github.com/hashicorp/go-retryablehttp v0.7.7
+	github.com/UiP9AV6Y/go-slog-adapter v0.1.0
 	github.com/prometheus/client_golang v1.20.5
 	gitlab.com/gitlab-org/api/client-go v0.118.0
 	golang.org/x/sync v0.10.0
@@ -25,6 +25,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
