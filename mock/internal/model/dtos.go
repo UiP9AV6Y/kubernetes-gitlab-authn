@@ -1,7 +1,6 @@
-package main
+package model
 
 import (
-	"strings"
 	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
@@ -159,74 +158,3 @@ var (
 		Visibility:  gitlab.InternalVisibility,
 	}
 )
-
-// primary keys for DAO usage
-var (
-	pkAdmin    = "ADMIN"
-	pkMock     = "MOCK"
-	pkSecure   = "SECURE"
-	pkPrivate  = "PRIVATE"
-	pkExternal = "EXTERNAl"
-	pkBot      = "BOT"
-	pkLocked   = "LOCKED"
-	pkPristine = "PRISTINE"
-	pks        = []string{
-		pkAdmin,
-		pkMock,
-		pkSecure,
-		pkPrivate,
-		pkExternal,
-		pkBot,
-		pkLocked,
-		pkPristine,
-	}
-)
-
-// primitive data access objects
-var (
-	userDAO  map[string]gitlab.User
-	groupDAO map[string][]gitlab.Group
-)
-
-func init() {
-	userDAO = make(map[string]gitlab.User, 6)
-	userDAO[pkAdmin] = adminUser
-	userDAO[pkMock] = mockUser
-	userDAO[pkSecure] = secureUser
-	userDAO[pkPrivate] = privateUser
-	userDAO[pkExternal] = externalUser
-	userDAO[pkBot] = botUser
-	userDAO[pkLocked] = lockedUser
-	userDAO[pkPristine] = pristineUser
-
-	adminGroups := []gitlab.Group{
-		coreGroup, adminGroup,
-	}
-	userGroups := []gitlab.Group{
-		coreGroup, userGroup,
-	}
-	specialGroups := []gitlab.Group{
-		coreGroup, userGroup, specialGroup,
-	}
-	groupDAO = make(map[string][]gitlab.Group, 6)
-	groupDAO[pkAdmin] = adminGroups
-	groupDAO[pkMock] = userGroups
-	groupDAO[pkSecure] = userGroups
-	groupDAO[pkPrivate] = userGroups
-	groupDAO[pkExternal] = specialGroups
-	groupDAO[pkBot] = specialGroups
-	groupDAO[pkLocked] = specialGroups
-	groupDAO[pkPristine] = specialGroups
-}
-
-// findPK performs a substring search with the primary keys
-// against the provided haystack.
-func findPK(s string) string {
-	for _, pk := range pks {
-		if strings.Contains(s, pk) {
-			return pk
-		}
-	}
-
-	return ""
-}

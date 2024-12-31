@@ -1,111 +1,53 @@
 package main
 
 import (
-	"encoding/json"
-	"log/slog"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
-	"strings"
+	"path/filepath"
+
+	logflags "github.com/UiP9AV6Y/go-slog-adapter/stdflags"
+
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/gitlab-mock/internal/model"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/gitlab-mock/internal/web"
 )
 
-const (
-	HeaderAuthorization = "Authorization"
-	HeaderPrivateToken  = "PRIVATE-TOKEN"
-)
+func run(o, e io.Writer, argv ...string) int {
+	name := filepath.Base(argv[0])
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	strict := fs.Bool("auth.strict", false, "Use equality instead of substring comparison for tokens")
+	listen := fs.String("web.listen-address", ":8080", "Addresses to listen for incoming HTTP requests")
+	log := logflags.NewLogFlags(fs)
 
-func notFoundHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		slog.Warn("Missing route implementation", "path", req.URL.Path)
-		respondError(w, http.StatusNotFound, "not implemented")
-	}
-}
-
-func meHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		auth := parseToken(req)
-		if auth == "" {
-			slog.Info("User request is missing authentication information")
-			respondError(w, http.StatusUnauthorized, "missing token")
-			return
+	if err := fs.Parse(argv[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
 		}
 
-		pk := findPK(auth)
-		result, ok := userDAO[pk]
-		if ok {
-			slog.Info("User request yielded result", "principal", pk)
-			respondDTO(w, result)
-			return
-		}
-
-		slog.Info("User request can not be served properly", "token", auth)
-		respondError(w, http.StatusNotFound, "user not found")
-	}
-}
-
-func groupsHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		auth := parseToken(req)
-		if auth == "" {
-			slog.Info("Groups request is missing authentication information")
-			respondError(w, http.StatusUnauthorized, "missing token")
-			return
-		}
-
-		pk := findPK(auth)
-		result, ok := groupDAO[pk]
-		if ok {
-			slog.Info("Groups request yielded result", "principal", pk)
-			respondDTO(w, result)
-			return
-		}
-
-		slog.Info("Groups request can not be served properly", "token", auth)
-		respondError(w, http.StatusNotFound, "groups not found")
-	}
-}
-
-func parseToken(r *http.Request) string {
-	token := r.Header.Get(HeaderPrivateToken)
-	if token != "" {
-		return token
+		fmt.Fprintf(e, "%s, try --help\n", err)
+		return 1
 	}
 
-	auth := r.Header.Get(HeaderAuthorization)
-	if auth == "" {
-		return auth
+	user := model.SelectUserByTokenQuery(*strict)
+	groups := model.SelectGroupsByTokenQuery(*strict)
+	logger := log.Adapter(o, nil).Logger()
+
+	http.HandleFunc("/", web.NotFoundHandler(logger))
+	http.HandleFunc("/api/v4/user", web.MeHandler(user, logger))
+	http.HandleFunc("/api/v4/groups", web.GroupsHandler(groups, logger))
+
+	logger.Info("Listening on", "address", *listen)
+	if err := http.ListenAndServe(*listen, nil); err != nil {
+		logger.Error("HTTP Server error", "err", err)
+		return 1
 	}
 
-	fields := strings.Fields(auth)
-	if len(fields) != 2 {
-		return ""
-	}
-
-	// we ignore the auth type for simplicity sake
-	return fields[1]
-}
-
-func respondError(w http.ResponseWriter, code int, err string) {
-	dto := map[string]string{
-		"error": err,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(dto)
-}
-
-func respondDTO(w http.ResponseWriter, dto interface{}) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(dto)
+	return 0
 }
 
 func main() {
-	http.HandleFunc("/", notFoundHandler())
-	http.HandleFunc("/api/v4/user", meHandler())
-	http.HandleFunc("/api/v4/groups", groupsHandler())
-
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		slog.Error("HTTP Server error", "err", err)
-		os.Exit(1)
-	}
+	os.Exit(run(os.Stdout, os.Stderr, os.Args...))
 }
