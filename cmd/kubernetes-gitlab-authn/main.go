@@ -68,6 +68,10 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		return err
 	}
 
+	if err := registry.Register(cache.NewMetricsCollector(users.Metrics, metrics.Namespace)); err != nil {
+		return err
+	}
+
 	bootup, shutdown := servers.CacheTask(users)
 	queue := []serverTask{bootup, shutdown}
 
