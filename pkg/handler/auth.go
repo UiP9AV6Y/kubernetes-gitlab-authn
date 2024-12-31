@@ -111,19 +111,22 @@ func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandle
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
+	if r.Method != http.MethodPost {
+		http.Error(w, httpStatusMethodNotAllowed, http.StatusMethodNotAllowed)
+		return
+	}
+
 	t, m, err := parseReviewToken(r.Body)
 	if err != nil {
 		h.logger.Info("Invalid authentication request received", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
-		h.rejectReview(w, m, "malformed review request")
+		h.rejectReview(w, m, "malformed review request", http.StatusBadRequest)
 		return
 	}
 
 	u, g, err := h.authenticate(r.Context(), t)
 	if err != nil {
 		h.logger.Info("Authentication failed", "user", u.Username, "err", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		h.rejectReview(w, m, "unable to review request")
+		h.rejectReview(w, m, "unable to review request", http.StatusUnauthorized)
 		return
 	}
 
@@ -132,13 +135,11 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = h.authorize(r.Context(), s, i)
 	if err != nil {
 		h.logger.Info("Authorization failed", "user", u.Username, "realm", s, "err", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		h.rejectReview(w, m, "precondition failed")
+		h.rejectReview(w, m, "precondition failed", http.StatusUnauthorized)
 		return
 	}
 
 	h.logger.Info("Authentication accepted", "user", u.Username, "realm", s)
-	w.WriteHeader(http.StatusOK)
 	h.acceptReview(w, m, i)
 }
 
@@ -180,12 +181,12 @@ func (h *AuthHandler) authorize(ctx context.Context, realm string, user authenti
 	return nil
 }
 
-func (h *AuthHandler) rejectReview(w http.ResponseWriter, header meta.TypeMeta, err string) {
+func (h *AuthHandler) rejectReview(w http.ResponseWriter, header meta.TypeMeta, err string, statusCode int) {
 	status := authentication.TokenReviewStatus{
 		Error: err,
 	}
 
-	writeReview(w, header, status)
+	writeReview(w, header, status, statusCode)
 }
 
 func (h *AuthHandler) acceptReview(w http.ResponseWriter, header meta.TypeMeta, info authentication.UserInfo) {
@@ -194,17 +195,18 @@ func (h *AuthHandler) acceptReview(w http.ResponseWriter, header meta.TypeMeta, 
 		User:          info,
 	}
 
-	writeReview(w, header, status)
+	writeReview(w, header, status, http.StatusOK)
 }
 
-func writeReview(w http.ResponseWriter, header meta.TypeMeta, status authentication.TokenReviewStatus) {
+func writeReview(w http.ResponseWriter, header meta.TypeMeta, status authentication.TokenReviewStatus, statusCode int) {
 	dto := &authentication.TokenReview{
 		ObjectMeta: meta.ObjectMeta{CreationTimestamp: meta.Now()},
 		TypeMeta:   header,
 		Status:     status,
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", contentTypeJSON)
+	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(dto)
 }
 
