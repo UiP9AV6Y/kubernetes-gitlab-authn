@@ -3,16 +3,15 @@ module github.com/UiP9AV6Y/kubernetes-gitlab-authn
 go 1.23.4
 
 require (
-	github.com/UiP9AV6Y/buildinfo v0.0.0-20240316121816-2a0a49f5d3c2
-	github.com/UiP9AV6Y/buildinfo/prometheus v0.0.0-20240316121816-2a0a49f5d3c2
-	github.com/UiP9AV6Y/go-k8s-user-authz v0.2.0
+	github.com/UiP9AV6Y/buildinfo v0.0.0-20241226145521-389438021249
+	github.com/UiP9AV6Y/buildinfo/prometheus v0.0.0-20241226145521-389438021249
+	github.com/UiP9AV6Y/go-k8s-user-authz v0.3.0
 	github.com/UiP9AV6Y/go-slog-adapter v0.1.0
 	github.com/prometheus/client_golang v1.20.5
 	gitlab.com/gitlab-org/api/client-go v0.118.0
 	golang.org/x/sync v0.10.0
 	k8s.io/api v0.32.0
 	k8s.io/apimachinery v0.32.0
-	k8s.io/apiserver v0.32.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -42,6 +41,7 @@ require (
 	golang.org/x/time v0.7.0 // indirect
 	google.golang.org/protobuf v1.36.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	k8s.io/apiserver v0.32.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect

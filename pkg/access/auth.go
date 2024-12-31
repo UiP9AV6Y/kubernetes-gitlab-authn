@@ -1,11 +1,6 @@
 package access
 
 import (
-	"context"
-	"slices"
-
-	"k8s.io/apiserver/pkg/authentication/user"
-
 	"github.com/UiP9AV6Y/go-k8s-user-authz"
 	"github.com/UiP9AV6Y/go-k8s-user-authz/userinfo"
 )
@@ -37,57 +32,23 @@ func NewRejectPristineAuthorizer() userauthz.Authorizer {
 // NewRequireUsersAuthorizer returns an [userauthz.Authorizer] instance
 // which requires a user to be named in the given list.
 func NewRequireUsersAuthorizer(users []string) userauthz.Authorizer {
-	auth := make([]userauthz.Authorizer, len(users))
-	for i, u := range users {
-		auth[i] = userinfo.RequireName(u)
-	}
-
-	return userauthz.RequireAny(auth)
+	return userinfo.RequireAnyNames(users)
 }
 
 // NewRequireGroupsAuthorizer returns an [userauthz.Authorizer] instance
 // which requires a user to be a member of ALL given groups.
 func NewRequireGroupsAuthorizer(groups []string) userauthz.Authorizer {
-	auth := make([]userauthz.Authorizer, len(groups))
-	for i, g := range groups {
-		auth[i] = userinfo.RequireGroup(g)
-	}
-
-	return userauthz.RequireAll(auth)
+	return userinfo.RequireAllGroups(groups)
 }
 
 // NewRejectUsersAuthorizer returns an [userauthz.Authorizer] instance
 // which rejects a user if named in the given list.
 func NewRejectUsersAuthorizer(users []string) userauthz.Authorizer {
-	auth := func(_ context.Context, u user.Info) userauthz.Decision {
-		name := u.GetName()
-		if slices.Contains(users, name) {
-			return userauthz.Decision("User " + name + " is explicitly prohibited")
-		}
-
-		return userauthz.DecisionAllow
-	}
-
-	return userauthz.AuthorizerFunc(auth)
+	return userinfo.RejectAnyNames(users)
 }
 
 // NewRejectGroupsAuthorizer returns an [userauthz.Authorizer] instance
 // which rejects users with membership of at least on of the given groups.
 func NewRejectGroupsAuthorizer(groups []string) userauthz.Authorizer {
-	auth := func(_ context.Context, u user.Info) userauthz.Decision {
-		haystack := u.GetGroups()
-		if haystack == nil {
-			return userauthz.DecisionAllow
-		}
-
-		for _, g := range haystack {
-			if slices.Contains(haystack, g) {
-				return userauthz.Decision("Members of " + g + " are not allowed")
-			}
-		}
-
-		return userauthz.DecisionAllow
-	}
-
-	return userauthz.AuthorizerFunc(auth)
+	return userinfo.RejectAnyGroups(groups)
 }
