@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/UiP9AV6Y/go-slog-adapter"
-
+	slogadapter "github.com/UiP9AV6Y/go-slog-adapter"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 )
 

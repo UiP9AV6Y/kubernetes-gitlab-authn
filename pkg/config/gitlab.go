@@ -5,8 +5,9 @@ import (
 	"crypto/x509"
 	"net/http"
 	"os"
+	"time"
 
-	"gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 type GitlabGroupFilter struct {
@@ -20,12 +21,14 @@ type Gitlab struct {
 	Server `json:",inline"`
 
 	AttributesAsGroups bool              `json:"attributes_as_groups"`
+	InactivityTimeout  time.Duration     `json:"inactivity_timeout"`
 	GroupFilter        GitlabGroupFilter `json:"group_filter"`
 }
 
 func NewGitlab() *Gitlab {
 	result := &Gitlab{
-		Server: *NewServer(),
+		Server:            *NewServer(),
+		InactivityTimeout: time.Hour * 24 * 30 * 6, // ~6 months
 	}
 	result.Server.Address = "gitlab.com"
 	result.Server.Port = 443

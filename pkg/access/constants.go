@@ -36,6 +36,9 @@ const (
 	// AttributePristine is the extra value added to authentication objects
 	// when the user has not yet confirmed their account
 	AttributePristine = "pristine"
+	// AttributeDormant is the extra value added to authentication objects
+	// when the user has not shown any activity for an extended period of time
+	AttributeDormant = "dormant"
 )
 
 const (
@@ -63,4 +66,7 @@ const (
 	// GroupPristine is the pseudo group added to authentication objects
 	// when the user has not yet confirmed their account
 	GroupPristine = GitlabGroup + ":" + AttributePristine
+	// GroupDormant is the extra value added to authentication objects
+	// when the user has not shown any activity for an extended period of time
+	GroupDormant = GitlabGroup + ":" + AttributeDormant
 )

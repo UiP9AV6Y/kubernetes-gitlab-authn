@@ -16,10 +16,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	bicol "github.com/UiP9AV6Y/buildinfo/prometheus/collector"
+	slogadapter "github.com/UiP9AV6Y/go-slog-adapter"
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/UiP9AV6Y/go-slog-adapter"
 	logflags "github.com/UiP9AV6Y/go-slog-adapter/stdflags"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"

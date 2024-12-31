@@ -3,16 +3,36 @@ package access
 import (
 	"strconv"
 	"strings"
+	"time"
 
-	"gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	authentication "k8s.io/api/authentication/v1"
 )
 
-func UserInfo(user *gitlab.User, groups []*gitlab.Group, attrGroups bool) authentication.UserInfo {
+type UserInfoOptions struct {
+	AttributesAsGroups bool
+	DormantTimeout     time.Duration
+	Now                func() time.Time
+}
+
+func UserInfo(user *gitlab.User, groups []*gitlab.Group, opts UserInfoOptions) authentication.UserInfo {
 	var gids []string
-	if attrGroups {
-		agids := UserAttributeGroups(user)
+	var dormant bool
+	var now time.Time
+
+	if opts.Now != nil {
+		now = opts.Now()
+	} else {
+		now = time.Now()
+	}
+
+	if user.LastActivityOn != nil && opts.DormantTimeout > 0 {
+		dormant = now.Add(-opts.DormantTimeout).After(time.Time(*user.LastActivityOn))
+	}
+
+	if opts.AttributesAsGroups {
+		agids := userAttributeGroups(user, dormant)
 		gids = make([]string, len(groups), len(groups)+len(agids))
 		gids = append(gids, agids...)
 	} else {
@@ -23,7 +43,7 @@ func UserInfo(user *gitlab.User, groups []*gitlab.Group, attrGroups bool) authen
 		gids[i] = strings.ReplaceAll(g.FullPath, "/", ":")
 	}
 
-	extra := UserAttributeExtra(user)
+	extra := userAttributeExtra(user, dormant)
 	info := authentication.UserInfo{
 		Username: user.Username,
 		UID:      strconv.FormatInt(int64(user.ID), 10),
@@ -34,7 +54,7 @@ func UserInfo(user *gitlab.User, groups []*gitlab.Group, attrGroups bool) authen
 	return info
 }
 
-func UserAttributeGroups(user *gitlab.User) []string {
+func userAttributeGroups(user *gitlab.User, dormant bool) []string {
 	groups := make([]string, 0, 5)
 
 	if user.TwoFactorEnabled {
@@ -61,11 +81,14 @@ func UserAttributeGroups(user *gitlab.User) []string {
 	if user.ConfirmedAt == nil {
 		groups = append(groups, GroupPristine)
 	}
+	if dormant {
+		groups = append(groups, GroupDormant)
+	}
 
 	return groups
 }
 
-func UserAttributeExtra(user *gitlab.User) map[string]authentication.ExtraValue {
+func userAttributeExtra(user *gitlab.User, dormant bool) map[string]authentication.ExtraValue {
 	attrs := make([]string, 0, 5)
 	if user.TwoFactorEnabled {
 		attrs = append(attrs, Attribute2fa)
@@ -90,6 +113,9 @@ func UserAttributeExtra(user *gitlab.User) map[string]authentication.ExtraValue 
 	}
 	if user.ConfirmedAt == nil {
 		attrs = append(attrs, AttributePristine)
+	}
+	if dormant {
+		attrs = append(attrs, AttributeDormant)
 	}
 
 	extra := map[string]authentication.ExtraValue{

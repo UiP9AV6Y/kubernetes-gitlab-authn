@@ -7,7 +7,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
-	"github.com/UiP9AV6Y/go-slog-adapter"
+	slogadapter "github.com/UiP9AV6Y/go-slog-adapter"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/handler"
@@ -36,6 +36,7 @@ func newAppRouter(reg *prometheus.Registry, logger *slogadapter.SlogAdapter, cfg
 
 	authOpts := &handler.AuthHandlerOpts{
 		AttributesAsGroups:   cfg.Gitlab.AttributesAsGroups,
+		InactivityTimeout:    cfg.Gitlab.InactivityTimeout,
 		GroupsOwnedOnly:      cfg.Gitlab.GroupFilter.OwnedOnly,
 		GroupsTopLevelOnly:   cfg.Gitlab.GroupFilter.TopLevelOnly,
 		GroupsMinAccessLevel: cfg.Gitlab.GroupFilter.MinAccessLevel,

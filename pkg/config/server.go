@@ -26,8 +26,7 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	result := &Server{
-	}
+	result := &Server{}
 
 	return result
 }

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/UiP9AV6Y/go-k8s-user-authz"
+	userauthz "github.com/UiP9AV6Y/go-k8s-user-authz"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 )
@@ -15,6 +15,8 @@ type RealmAccessRules struct {
 	RejectLocked bool `json:"reject_locked"`
 	// Reject users which have not confirmed their account yet
 	RejectPristine bool `json:"reject_pristine"`
+	// Reject users which have not had any activity for some time
+	RejectDormant bool `json:"reject_dormant"`
 	// Only allow users with the given usernames
 	RequireUsers []string `json:"require_users"`
 	// Reject users based on their username
@@ -42,6 +44,10 @@ func (r *RealmAccessRules) UserRules() userauthz.Authorizer {
 
 	if r.RejectPristine {
 		result = append(result, access.NewRejectPristineAuthorizer())
+	}
+
+	if r.RejectDormant {
+		result = append(result, access.NewRejectDormantAuthorizer())
 	}
 
 	if len(r.RequireUsers) > 0 {

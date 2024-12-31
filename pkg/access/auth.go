@@ -1,7 +1,7 @@
 package access
 
 import (
-	"github.com/UiP9AV6Y/go-k8s-user-authz"
+	userauthz "github.com/UiP9AV6Y/go-k8s-user-authz"
 	"github.com/UiP9AV6Y/go-k8s-user-authz/userinfo"
 )
 
@@ -27,6 +27,12 @@ func NewRejectLockedAuthorizer() userauthz.Authorizer {
 // which rejects users whose extra values contain [AttributePristine]
 func NewRejectPristineAuthorizer() userauthz.Authorizer {
 	return userinfo.RejectExtra(GitlabAttributesKey, AttributePristine)
+}
+
+// NewRejectDormantAuthorizer returns an [userauthz.Authorizer]
+// which rejects users whose extra values contain [AttributeDormant]
+func NewRejectDormantAuthorizer() userauthz.Authorizer {
+	return userinfo.RejectExtra(GitlabAttributesKey, AttributeDormant)
 }
 
 // NewRequireUsersAuthorizer returns an [userauthz.Authorizer] instance

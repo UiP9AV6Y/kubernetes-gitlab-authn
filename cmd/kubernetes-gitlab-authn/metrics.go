@@ -6,8 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/UiP9AV6Y/go-slog-adapter"
-
+	slogadapter "github.com/UiP9AV6Y/go-slog-adapter"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 )
 

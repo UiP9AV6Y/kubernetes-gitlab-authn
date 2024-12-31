@@ -8,13 +8,14 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	authentication "k8s.io/api/authentication/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/UiP9AV6Y/go-k8s-user-authz"
+	userauthz "github.com/UiP9AV6Y/go-k8s-user-authz"
 	"github.com/UiP9AV6Y/go-k8s-user-authz/userinfo"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
@@ -31,6 +32,7 @@ const (
 
 type AuthHandlerOpts struct {
 	AttributesAsGroups bool
+	InactivityTimeout  time.Duration
 
 	GroupsOwnedOnly      bool
 	GroupsTopLevelOnly   bool
@@ -47,6 +49,15 @@ func NewAuthHandlerOpts() *AuthHandlerOpts {
 	result := &AuthHandlerOpts{
 		GroupsMinAccessLevel: gitlab.MinimalAccessPermissions,
 		UserACLs:             acls,
+	}
+
+	return result
+}
+
+func (o *AuthHandlerOpts) UserInfoOptions() *access.UserInfoOptions {
+	result := &access.UserInfoOptions{
+		AttributesAsGroups: o.AttributesAsGroups,
+		DormantTimeout:     o.InactivityTimeout,
 	}
 
 	return result
@@ -76,7 +87,7 @@ type AuthHandler struct {
 	client     *gitlab.Client
 	logger     *slog.Logger
 	listGroups *gitlab.ListGroupsOptions
-	attrGroups bool
+	userInfo   *access.UserInfoOptions
 
 	userAuth map[string]userauthz.Authorizer
 }
@@ -90,7 +101,7 @@ func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandle
 		client:     client,
 		logger:     logger,
 		listGroups: opts.ListGroupsOptions(),
-		attrGroups: opts.AttributesAsGroups,
+		userInfo:   opts.UserInfoOptions(),
 		userAuth:   opts.UserACLs,
 	}
 
@@ -117,7 +128,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := r.PathValue("realm")
-	i := access.UserInfo(u, g, h.attrGroups)
+	i := access.UserInfo(u, g, *h.userInfo)
 	err = h.authorize(r.Context(), s, i)
 	if err != nil {
 		h.logger.Info("Authorization failed", "user", u.Username, "realm", s, "err", err)

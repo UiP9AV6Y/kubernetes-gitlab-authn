@@ -8,32 +8,32 @@ import (
 )
 
 const (
-  // Usage text for -config
-	FlagUsageConfig  = "Configuration file location"
+	// Usage text for -config
+	FlagUsageConfig = "Configuration file location"
 )
 
 const (
-  // Flag name for the config filepath
-	FlagConfig  = "config"
+	// Flag name for the config filepath
+	FlagConfig = "config"
 )
 
 const (
-  // Environment variable for -config
-	EnvConfig  = "CONFIG"
+	// Environment variable for -config
+	EnvConfig = "CONFIG"
 )
 
 // ConfigFlags is a data storage for [flag.FlagSet] parsing results.
 type ConfigFlags struct {
-	cfgValue   *config.Config
-	cfgEnv     string
-	fs         *flag.FlagSet
+	cfgValue *config.Config
+	cfgEnv   string
+	fs       *flag.FlagSet
 }
 
 func newConfigFlags(fs *flag.FlagSet) *ConfigFlags {
 	result := &ConfigFlags{
-		cfgValue:   config.New(),
-		cfgEnv:     EnvConfig,
-		fs:         fs,
+		cfgValue: config.New(),
+		cfgEnv:   EnvConfig,
+		fs:       fs,
 	}
 
 	return result

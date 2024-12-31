@@ -3,7 +3,7 @@ package model
 import (
 	"strings"
 
-	"gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 // primary keys for DAO usage
