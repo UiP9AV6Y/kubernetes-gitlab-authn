@@ -16,6 +16,7 @@ var (
 	pkBot      = "BOT"
 	pkLocked   = "LOCKED"
 	pkPristine = "PRISTINE"
+	pkDormant  = "DORMANT"
 )
 
 // primitive data access objects
@@ -86,6 +87,7 @@ func init() {
 		pkBot:      botUser,
 		pkLocked:   lockedUser,
 		pkPristine: pristineUser,
+		pkDormant:  dormantUser,
 	}
 
 	adminGroups := []gitlab.Group{
@@ -106,5 +108,6 @@ func init() {
 		pkBot:      specialGroups,
 		pkLocked:   specialGroups,
 		pkPristine: specialGroups,
+		pkDormant:  specialGroups,
 	}
 }

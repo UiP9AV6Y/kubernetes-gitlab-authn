@@ -1,14 +1,25 @@
 package model
 
 import (
+	"net"
 	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 var (
+	// sign in address
+	netAddress = net.IPv4(127, 0, 0, 254)
+	// simulated time of sign in
+	signIn = time.Now()
+	// simulated time of activity
+	activity = gitlab.ISOTime(signIn)
+	// relative time to sign in to simulate inactivity
+	dormant = signIn.Add(-time.Hour * 24 * 30 * 9) // ~9 months
+	// simulated time of activity
+	inactivity = gitlab.ISOTime(dormant)
 	// simulated time of confirmation
-	confirmed = time.Now()
+	confirmed = time.Date(2019, time.January, 23, 10, 0, 0, 0, time.UTC)
 	// simulated time of creation
 	created = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 )
@@ -33,7 +44,12 @@ var (
 		Name:             "Admin User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 		IsAdmin:          true,
 	}
@@ -44,7 +60,12 @@ var (
 		Name:             "Mock User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 	}
 	secureUser = gitlab.User{
@@ -54,7 +75,12 @@ var (
 		Name:             "Secure User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 		TwoFactorEnabled: true,
 	}
@@ -65,7 +91,12 @@ var (
 		Name:             "Private User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 		PrivateProfile:   true,
 	}
@@ -76,7 +107,12 @@ var (
 		Name:             "External User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 		External:         true,
 	}
@@ -87,7 +123,12 @@ var (
 		Name:             "Bot User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 		Bot:              true,
 	}
@@ -98,7 +139,12 @@ var (
 		Name:             "Locked User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
 		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &signIn,
+		LastSignInAt:     &signIn,
+		LastActivityOn:   &activity,
 		CreatedAt:        &created,
 		Locked:           true,
 	}
@@ -109,6 +155,21 @@ var (
 		Name:             "Pristine User",
 		Provider:         userProvider,
 		CustomAttributes: customUserAttributes,
+		CreatedAt:        &created,
+	}
+	dormantUser = gitlab.User{
+		ID:               9353,
+		Username:         "dormant",
+		Email:            "dormant@localhost.localdomain",
+		Name:             "Dormant User",
+		Provider:         userProvider,
+		CustomAttributes: customUserAttributes,
+		CurrentSignInIP:  &netAddress,
+		LastSignInIP:     &netAddress,
+		ConfirmedAt:      &confirmed,
+		CurrentSignInAt:  &dormant,
+		LastSignInAt:     &dormant,
+		LastActivityOn:   &inactivity,
 		CreatedAt:        &created,
 	}
 )
