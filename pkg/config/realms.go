@@ -44,19 +44,19 @@ func (r *RealmAccessRules) UserRules() userauthz.Authorizer {
 		result = append(result, access.NewRejectPristineAuthorizer())
 	}
 
-	if r.RequireUsers != nil && len(r.RequireUsers) > 0 {
+	if len(r.RequireUsers) > 0 {
 		result = append(result, access.NewRequireUsersAuthorizer(r.RequireUsers))
 	}
 
-	if r.RequireGroups != nil && len(r.RequireGroups) > 0 {
+	if len(r.RequireGroups) > 0 {
 		result = append(result, access.NewRequireGroupsAuthorizer(r.RequireGroups))
 	}
 
-	if r.RejectUsers != nil && len(r.RejectUsers) > 0 {
+	if len(r.RejectUsers) > 0 {
 		result = append(result, access.NewRejectUsersAuthorizer(r.RejectUsers))
 	}
 
-	if r.RejectGroups != nil && len(r.RejectGroups) > 0 {
+	if len(r.RejectGroups) > 0 {
 		result = append(result, access.NewRejectGroupsAuthorizer(r.RejectGroups))
 	}
 
