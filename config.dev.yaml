@@ -5,6 +5,9 @@ gitlab:
   port: 8080
   tls: ~
 
+cache:
+  ttl: 1m
+
 realms:
   '': # default realm
     - &common_acls

@@ -19,6 +19,7 @@ import (
 	"github.com/UiP9AV6Y/go-k8s-user-authz/userinfo"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 )
 
 var (
@@ -30,6 +31,8 @@ const (
 	DefaultAuthenticationAPIVersion = "authentication.k8s.io/v1"
 )
 
+const unauthorizedUsername = "n/a"
+
 type AuthHandlerOpts struct {
 	AttributesAsGroups bool
 	InactivityTimeout  time.Duration
@@ -39,16 +42,19 @@ type AuthHandlerOpts struct {
 	GroupsMinAccessLevel gitlab.AccessLevelValue
 	GroupsFilter         string
 
-	UserACLs map[string]userauthz.Authorizer
+	UserACLs  map[string]userauthz.Authorizer
+	UserCache *cache.UserInfoCache
 }
 
 func NewAuthHandlerOpts() *AuthHandlerOpts {
 	acls := map[string]userauthz.Authorizer{
 		"": userauthz.AlwaysAllowAuthorizer,
 	}
+	users := cache.NewUserInfoCache(1 * time.Hour)
 	result := &AuthHandlerOpts{
 		GroupsMinAccessLevel: gitlab.MinimalAccessPermissions,
 		UserACLs:             acls,
+		UserCache:            users,
 	}
 
 	return result
@@ -89,7 +95,8 @@ type AuthHandler struct {
 	listGroups *gitlab.ListGroupsOptions
 	userInfo   *access.UserInfoOptions
 
-	userAuth map[string]userauthz.Authorizer
+	userAuth  map[string]userauthz.Authorizer
+	userCache *cache.UserInfoCache
 }
 
 func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandlerOpts) (*AuthHandler, error) {
@@ -103,6 +110,7 @@ func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandle
 		listGroups: opts.ListGroupsOptions(),
 		userInfo:   opts.UserInfoOptions(),
 		userAuth:   opts.UserACLs,
+		userCache:  opts.UserCache,
 	}
 
 	return result, nil
@@ -123,23 +131,41 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, g, err := h.authenticate(r.Context(), t)
-	if err != nil {
-		h.logger.Info("Authentication failed", "user", u.Username, "err", err)
-		h.rejectReview(w, m, "unable to review request", http.StatusUnauthorized)
-		return
+	var i authentication.UserInfo
+	cached := h.userCache.Get(t)
+	if cached == nil {
+		u, g, err := h.authenticate(r.Context(), t)
+		if err != nil {
+			i.Username = u.Username      // for logging purposes later on
+			i.UID = unauthorizedUsername // mark as invalid
+			cache.SetUserInfo(h.userCache, t, i)
+			h.logger.Info("Authentication failed", "user", i.Username, "err", err)
+			h.rejectReview(w, m, "unable to review request", http.StatusUnauthorized)
+			return
+		}
+
+		i = access.UserInfo(u, g, *h.userInfo)
+		cache.SetUserInfo(h.userCache, t, i)
+		h.logger.Debug("Authentication succeeded", "user", i.Username)
+	} else {
+		i = cached.Value()
+		h.logger.Debug("Using cached authentication", "user", i.Username)
+		if i.UID == unauthorizedUsername { // previous rejection
+			h.logger.Info("Cached authentication failure", "user", i.Username)
+			h.rejectReview(w, m, "repeated authentication failure", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	s := r.PathValue("realm")
-	i := access.UserInfo(u, g, *h.userInfo)
 	err = h.authorize(r.Context(), s, i)
 	if err != nil {
-		h.logger.Info("Authorization failed", "user", u.Username, "realm", s, "err", err)
+		h.logger.Info("Authorization failed", "user", i.Username, "realm", s, "err", err)
 		h.rejectReview(w, m, "precondition failed", http.StatusUnauthorized)
 		return
 	}
 
-	h.logger.Info("Authentication accepted", "user", u.Username, "realm", s)
+	h.logger.Info("Authorization accepted", "user", i.Username, "realm", s)
 	h.acceptReview(w, m, i)
 }
 
@@ -150,7 +176,7 @@ func (h *AuthHandler) authenticate(ctx context.Context, token string) (user *git
 	)
 	if err != nil {
 		user = &gitlab.User{
-			Username: "n/a",
+			Username: unauthorizedUsername,
 		}
 		return
 	}

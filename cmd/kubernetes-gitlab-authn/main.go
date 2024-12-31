@@ -22,6 +22,7 @@ import (
 
 	logflags "github.com/UiP9AV6Y/go-slog-adapter/stdflags"
 
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 	cfgflags "github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config/stdflags"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
@@ -61,14 +62,18 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		return
 	}
 
-	router, err = newAppRouter(registry, logger, config)
+	users := cache.NewUserInfoCache(config.Cache.ExpirationTime())
+	router, err = newAppRouter(registry, users, logger, config)
 	if err != nil {
 		return err
 	}
 
-	server = newHTTPServer(router, mainCtx)
-	bootup, shutdown := servers.Task("app", server, config.Server)
+	bootup, shutdown := servers.CacheTask(users)
 	queue := []serverTask{bootup, shutdown}
+
+	server = newHTTPServer(router, mainCtx)
+	bootup, shutdown = servers.HTTPTask("app", server, config.Server)
+	queue = append(queue, bootup, shutdown)
 
 	if config.Metrics.Port > 0 {
 		router, err = newMetricsRouter(registry, logger, config.Metrics)
@@ -77,7 +82,7 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		}
 
 		server = newHTTPServer(router, mainCtx)
-		bootup, shutdown = servers.Task("metrics", server, &config.Metrics.Server)
+		bootup, shutdown = servers.HTTPTask("metrics", server, &config.Metrics.Server)
 		queue = append(queue, bootup, shutdown)
 	}
 
@@ -88,7 +93,7 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		}
 
 		server = newHTTPServer(router, mainCtx)
-		bootup, shutdown = servers.Task("health", server, &config.Health.Server)
+		bootup, shutdown = servers.HTTPTask("health", server, &config.Health.Server)
 		queue = append(queue, bootup, shutdown)
 	}
 

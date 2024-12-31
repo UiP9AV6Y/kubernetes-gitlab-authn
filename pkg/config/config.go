@@ -17,6 +17,7 @@ type Config struct {
 	Server  *Server  `json:"server"`
 	Health  *Health  `json:"health"`
 	Metrics *Metrics `json:"metrics"`
+	Cache   *Cache   `json:"cache"`
 	Web     *Web     `json:"web"`
 
 	file string `json:"-"`
@@ -29,6 +30,7 @@ func New() *Config {
 		Server:  NewServer(),
 		Health:  NewHealth(),
 		Metrics: NewMetrics(),
+		Cache:   NewCache(),
 		Web:     NewWeb(),
 		file:    Path,
 	}

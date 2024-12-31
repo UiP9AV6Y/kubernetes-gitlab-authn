@@ -4,8 +4,6 @@ github.com/UiP9AV6Y/buildinfo/prometheus v0.0.0-20241226145521-389438021249 h1:L
 github.com/UiP9AV6Y/buildinfo/prometheus v0.0.0-20241226145521-389438021249/go.mod h1:8XN9ts/dVF8itMxX0rUOgReYyLi1AZZCJsDt5gFCJAQ=
 github.com/UiP9AV6Y/go-k8s-user-authz v0.3.0 h1:Wo5hVR7zF2om56T8qA2I/SJRCOhJg0kMf9iFfrkkcgc=
 github.com/UiP9AV6Y/go-k8s-user-authz v0.3.0/go.mod h1:LxSY/sqYxeLe9rhJw3jKodUgeMJTbPLZoIIId5Hg5oA=
-github.com/UiP9AV6Y/go-slog-adapter v0.1.0 h1:UUiAn6fvbZFtn3NlVbME6eMKk27cqUBwSXs24/WWJBc=
-github.com/UiP9AV6Y/go-slog-adapter v0.1.0/go.mod h1:BnFzqLLpXJlbWZVhps8yNu8Iv3a9AsR3vb2DieCq3Bk=
 github.com/UiP9AV6Y/go-slog-adapter v0.2.0 h1:E8GewUjeRmtA02rJFfvPY5L+Ms1p9OhSSWt4Zuci1aM=
 github.com/UiP9AV6Y/go-slog-adapter v0.2.0/go.mod h1:BnFzqLLpXJlbWZVhps8yNu8Iv3a9AsR3vb2DieCq3Bk=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -39,6 +37,8 @@ github.com/hashicorp/go-hclog v1.6.3 h1:Qr2kF+eVWjTiYmU7Y31tYlP1h0q/X3Nl3tPGdaB1
 github.com/hashicorp/go-hclog v1.6.3/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-retryablehttp v0.7.7 h1:C8hUCYzor8PIfXHa4UrZkU4VvK8o9ISHxT2Q8+VepXU=
 github.com/hashicorp/go-retryablehttp v0.7.7/go.mod h1:pkQpWZeYWskR+D1tR2O5OcBFOxfA7DoAO6xtkuQnHTk=
+github.com/jellydator/ttlcache/v3 v3.3.0 h1:BdoC9cE81qXfrxeb9eoJi9dWrdhSuwXMAnHTbnBm4Wc=
+github.com/jellydator/ttlcache/v3 v3.3.0/go.mod h1:bj2/e0l4jRnQdrnSTaGTsh4GSXvMjQcy41i7th0GVGw=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
@@ -87,6 +87,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 gitlab.com/gitlab-org/api/client-go v0.118.0 h1:qHIEw+XHt+2xuk4iZGW8fc6t+gTLAGEmTA5Bzp/brxs=
 gitlab.com/gitlab-org/api/client-go v0.118.0/go.mod h1:E+X2dndIYDuUfKVP0C3jhkWvTSE00BkLbCsXTY3edDo=
+go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
+go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=

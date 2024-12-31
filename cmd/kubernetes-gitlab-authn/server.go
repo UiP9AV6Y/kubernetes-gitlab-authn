@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 )
 
@@ -18,7 +19,26 @@ type serverManager struct {
 	ctx    context.Context
 }
 
-func (m *serverManager) Task(name string, server *http.Server, config *config.Server) (func() error, func() error) {
+func (m *serverManager) CacheTask(cache *cache.UserInfoCache) (serverTask, serverTask) {
+	start := func() error {
+		m.logger.Info("Starting cache eviction scheduler")
+		cache.Start()
+
+		return nil
+	}
+	stop := func() error {
+		<-m.ctx.Done()
+
+		m.logger.Info("Cache eviction is terminating")
+		cache.Stop()
+
+		return nil
+	}
+
+	return serverTask(start), serverTask(stop)
+}
+
+func (m *serverManager) HTTPTask(name string, server *http.Server, config *config.Server) (serverTask, serverTask) {
 	start := func() error {
 		var ln net.Listener
 		var err error
@@ -52,5 +72,5 @@ func (m *serverManager) Task(name string, server *http.Server, config *config.Se
 		return server.Shutdown(ctx)
 	}
 
-	return start, stop
+	return serverTask(start), serverTask(stop)
 }

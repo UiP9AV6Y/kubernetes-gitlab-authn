@@ -7,6 +7,7 @@ require (
 	github.com/UiP9AV6Y/buildinfo/prometheus v0.0.0-20241226145521-389438021249
 	github.com/UiP9AV6Y/go-k8s-user-authz v0.3.0
 	github.com/UiP9AV6Y/go-slog-adapter v0.2.0
+	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/prometheus/client_golang v1.20.5
 	gitlab.com/gitlab-org/api/client-go v0.118.0
 	golang.org/x/sync v0.10.0
