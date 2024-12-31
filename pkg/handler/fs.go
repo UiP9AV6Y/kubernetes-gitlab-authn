@@ -88,7 +88,7 @@ func (h *FilesystemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if route == "/index.html" {
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 		w.Header().Set("Last-Modified", h.modtime.Format(http.TimeFormat))
-		w.Write(h.landingPage)
+		_, _ = w.Write(h.landingPage)
 	} else {
 		h.fallback.ServeHTTP(w, r)
 	}
