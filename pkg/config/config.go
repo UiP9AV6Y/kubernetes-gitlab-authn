@@ -18,6 +18,8 @@ type Config struct {
 	Health  *Health  `json:"health"`
 	Metrics *Metrics `json:"metrics"`
 	Web     *Web     `json:"web"`
+
+	file string `json:"-"`
 }
 
 func New() *Config {
@@ -28,9 +30,23 @@ func New() *Config {
 		Health:  NewHealth(),
 		Metrics: NewMetrics(),
 		Web:     NewWeb(),
+		file:    Path,
 	}
 
 	return result
+}
+
+// String returns the filesystem location
+// of the file containing the stored data.
+// It satisfies the [flag.Value] contract.
+func (c *Config) String() string {
+	return c.file
+}
+
+// Set is an alias for [Config.LoadFile].
+// It satisfies the [flag.Value] contract.
+func (c *Config) Set(path string) error {
+	return c.LoadFile(path)
 }
 
 func (c *Config) LoadFile(path string) error {
@@ -38,6 +54,8 @@ func (c *Config) LoadFile(path string) error {
 	if err != nil {
 		return err
 	}
+
+	c.file = path
 
 	return yaml.Unmarshal(b, c)
 }

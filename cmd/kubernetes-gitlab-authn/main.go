@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -21,11 +20,15 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/UiP9AV6Y/go-slog-adapter"
+	logflags "github.com/UiP9AV6Y/go-slog-adapter/stdflags"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
+	cfgflags "github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config/stdflags"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/version"
 )
+
+const envPrefix = "GITLAB_AUTHN_"
 
 func newHTTPServer(h http.Handler, ctx context.Context) *http.Server {
 	result := &http.Server{
@@ -101,42 +104,22 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 	return nil
 }
 
-func newLogger(w io.Writer, level, format string) (logger *slog.Logger, lvl slog.Level, err error) {
-	err = (&lvl).UnmarshalText([]byte(level))
-	if err != nil {
-		return
-	}
-
-	opts := &slog.HandlerOptions{Level: lvl}
-	if format == "json" {
-		logger = slog.New(slog.NewJSONHandler(w, opts))
-		return
-	} else if format == "text" {
-		logger = slog.New(slog.NewTextHandler(w, opts))
-		return
-	}
-
-	err = fmt.Errorf("unsupported log format %q", format)
-	return
-}
-
-func env(key, fallback string) string {
-	v := os.Getenv("GITLAB_AUTHN_" + key)
-	if v == "" {
-		return fallback
-	}
-
-	return v
-}
-
 func run(o, e io.Writer, argv ...string) int {
 	name := filepath.Base(argv[0])
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	ver := fs.Bool("version", false, "Print the version number and exit")
-	cfg := fs.String("config", env("CONFIG", config.Path), "Configuration file location. ($GITLAB_AUTHN_CONFIG)")
-	llv := fs.String("log.level", env("LOG_LEVEL", "info"), "Log level. Valid values include debug, info, warn, and error ($GITLAB_AUTHN_LOG_LEVEL)")
-	lfm := fs.String("log.format", env("LOG_FORMAT", "text"), "Log format. Valid values include text, and json ($GITLAB_AUTHN_LOG_FORMAT)")
-	settings := config.New()
+	log := logflags.NewEnvLogFlags(fs, envPrefix)
+	cfg := cfgflags.NewEnvConfigFlags(fs, envPrefix)
+
+	if err := log.ParseEnv(); err != nil {
+		fmt.Fprintf(e, "%s, try --help\n", err)
+		return 1
+	}
+
+	if err := cfg.ParseEnv(); err != nil {
+		fmt.Fprintf(e, "%s, try --help\n", err)
+		return 1
+	}
 
 	if err := fs.Parse(argv[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -152,23 +135,11 @@ func run(o, e io.Writer, argv ...string) int {
 		return 0
 	}
 
-	logger, lvl, err := newLogger(o, *llv, *lfm)
-	if err != nil {
-		fmt.Fprintf(e, "%s, try --help\n", err)
-		return 1
-	}
+	adapter := log.Adapter(o, nil)
+	settings := cfg.Config()
 
-	if configPath := *cfg; configPath != "" {
-		logger.Debug("Parsing configuration file", "path", configPath)
-		if err := settings.LoadFile(configPath); err != nil {
-			logger.Error("Config loading failed", "path", configPath, "err", err)
-			return 1
-		}
-	}
-
-	adapter := slogadapter.New(logger, lvl)
 	if err := runServers(name, settings, adapter); err != nil {
-		logger.Error("Application terminated", "err", err)
+		adapter.Logger().Error("Application terminated", "err", err)
 		return 1
 	}
 
