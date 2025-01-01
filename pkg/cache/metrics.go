@@ -6,9 +6,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// metricsCollector implements the prometheus.Collector interface.
-var _ prometheus.Collector = (*metricsCollector)(nil)
-
 type metricsCollector struct {
 	source func() ttlcache.Metrics
 
