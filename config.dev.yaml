@@ -23,9 +23,6 @@ realms:
       <<: *common_acls
   lockdown: [] # noone is getting in
 
-server:
-  port: 8080
-
 health:
   port: 18080
 

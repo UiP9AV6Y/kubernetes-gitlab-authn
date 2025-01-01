@@ -34,6 +34,7 @@ func New() *Config {
 		Web:     NewWeb(),
 		file:    Path,
 	}
+	result.Server.Port = 8080
 
 	return result
 }
