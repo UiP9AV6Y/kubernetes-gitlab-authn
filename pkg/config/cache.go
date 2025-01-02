@@ -35,7 +35,7 @@ type Cache struct {
 
 func NewCache() *Cache {
 	result := &Cache{
-		TTL: Duration{10 * time.Minute},
+		TTL: Duration{2 * time.Minute},
 	}
 
 	return result

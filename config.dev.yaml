@@ -6,7 +6,7 @@ gitlab:
   tls: ~
 
 cache:
-  ttl: 1m
+  ttl: 30s
 
 realms:
   '': # default realm
