@@ -177,13 +177,24 @@ var (
 // group models
 var (
 	coreGroup = gitlab.Group{
-		ID:         1,
-		Name:       "Core",
-		Path:       "core",
-		FullName:   "core",
-		FullPath:   "core",
-		CreatedAt:  &created,
-		Visibility: gitlab.PublicVisibility,
+		ID:          1,
+		Description: "Everyone",
+		Name:        "Core",
+		Path:        "core",
+		FullName:    "core",
+		FullPath:    "core",
+		CreatedAt:   &created,
+		Visibility:  gitlab.PublicVisibility,
+	}
+	testGroup = gitlab.Group{
+		ID:          2,
+		Description: "Staged feature deployments",
+		Name:        "Features",
+		Path:        "test",
+		FullName:    "test",
+		FullPath:    "test",
+		CreatedAt:   &created,
+		Visibility:  gitlab.PrivateVisibility,
 	}
 	adminGroup = gitlab.Group{
 		ID:          11,

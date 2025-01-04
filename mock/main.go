@@ -34,13 +34,14 @@ func run(o, e io.Writer, argv ...string) int {
 	user := model.SelectUserByTokenQuery(*strict)
 	groups := model.SelectGroupsByTokenQuery(*strict)
 	logger := log.Adapter(o, nil).Logger()
+	router := http.NewServeMux()
 
-	http.HandleFunc("/", web.NotFoundHandler(logger))
-	http.HandleFunc("/api/v4/user", web.MeHandler(user, logger))
-	http.HandleFunc("/api/v4/groups", web.GroupsHandler(groups, logger))
+	router.Handle("/", web.NotFoundHandler(logger))
+	router.Handle("/api/v4/user", web.MeHandler(user, logger))
+	router.Handle("/api/v4/groups", web.GroupsHandler(groups, logger))
 
 	logger.Info("Listening on", "address", *listen)
-	if err := http.ListenAndServe(*listen, nil); err != nil {
+	if err := http.ListenAndServe(*listen, router); err != nil {
 		logger.Error("HTTP Server error", "err", err)
 		return 1
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strconv"
 	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
@@ -27,7 +28,7 @@ var (
 
 type SelectUserQuery func(string) (gitlab.User, bool)
 
-type SelectGroupsQuery func(string) ([]gitlab.Group, bool)
+type SelectGroupsQuery func(string, int, int) ([]gitlab.Group, int, bool)
 
 func SelectUserByTokenQuery(strict bool) SelectUserQuery {
 	var q func(string) string
@@ -52,8 +53,21 @@ func SelectGroupsByTokenQuery(strict bool) SelectGroupsQuery {
 		q = findPKLenient
 	}
 
-	return func(s string) (g []gitlab.Group, ok bool) {
-		g, ok = groupDAO[q(s)]
+	return func(s string, offset, limit int) (groups []gitlab.Group, total int, ok bool) {
+		high := offset + limit
+		groups, ok = groupDAO[q(s)]
+		if !ok || offset < 0 || limit <= 0 {
+			return
+		}
+
+		total = len(groups)
+		if offset >= total {
+			groups = []gitlab.Group{}
+		} else if high >= total {
+			groups = groups[offset:]
+		} else {
+			groups = groups[offset:high]
+		}
 
 		return
 	}
@@ -90,15 +104,38 @@ func init() {
 		pkDormant:  dormantUser,
 	}
 
+	featureSize := 50
 	adminGroups := []gitlab.Group{
 		coreGroup, adminGroup,
 	}
-	userGroups := []gitlab.Group{
-		coreGroup, userGroup,
-	}
+	userGroups := make([]gitlab.Group, 0, featureSize+3)
+	userGroups = append(userGroups, coreGroup, testGroup, userGroup)
 	specialGroups := []gitlab.Group{
 		coreGroup, userGroup, specialGroup,
 	}
+	for i := 1; i <= featureSize; i++ {
+		feat := strconv.Itoa(i)
+		path := "green-" + feat
+		name := "Green " + feat
+		if i%2 == 0 {
+			path = "blue-" + feat
+			name = "Blue " + feat
+		}
+
+		group := gitlab.Group{
+			ID:          2000 + i,
+			ParentID:    2,
+			Description: "Feature selection pool",
+			Name:        name,
+			Path:        path,
+			FullName:    "test / " + path,
+			FullPath:    "test/" + path,
+			CreatedAt:   &created,
+			Visibility:  gitlab.PrivateVisibility,
+		}
+		userGroups = append(userGroups, group)
+	}
+
 	groupDAO = map[string][]gitlab.Group{
 		pkAdmin:    adminGroups,
 		pkMock:     userGroups,
