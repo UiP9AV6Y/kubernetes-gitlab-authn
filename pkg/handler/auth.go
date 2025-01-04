@@ -41,6 +41,7 @@ type AuthHandlerOpts struct {
 	GroupsTopLevelOnly   bool
 	GroupsMinAccessLevel gitlab.AccessLevelValue
 	GroupsFilter         string
+	GroupsLimit          int
 
 	UserACLs  map[string]userauthz.Authorizer
 	UserCache *cache.UserInfoCache
@@ -70,8 +71,11 @@ func (o *AuthHandlerOpts) UserInfoOptions() *access.UserInfoOptions {
 }
 
 func (o *AuthHandlerOpts) ListGroupsOptions() *gitlab.ListGroupsOptions {
+	list := gitlab.ListOptions{
+		Page: 1,
+	}
 	result := &gitlab.ListGroupsOptions{
-		MinAccessLevel: &o.GroupsMinAccessLevel,
+		ListOptions: list,
 	}
 
 	if o.GroupsFilter != "" {
@@ -84,6 +88,14 @@ func (o *AuthHandlerOpts) ListGroupsOptions() *gitlab.ListGroupsOptions {
 
 	if o.GroupsTopLevelOnly {
 		result.TopLevelOnly = &o.GroupsTopLevelOnly
+	}
+
+	if o.GroupsLimit > 0 {
+		result.ListOptions.PerPage = o.GroupsLimit
+	}
+
+	if o.GroupsMinAccessLevel > gitlab.MinimalAccessPermissions {
+		result.MinAccessLevel = &o.GroupsMinAccessLevel
 	}
 
 	return result

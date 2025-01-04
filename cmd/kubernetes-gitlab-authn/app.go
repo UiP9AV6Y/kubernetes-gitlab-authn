@@ -42,6 +42,7 @@ func newAppRouter(reg *prometheus.Registry, users *cache.UserInfoCache, logger *
 		GroupsTopLevelOnly:   cfg.Gitlab.GroupFilter.TopLevelOnly,
 		GroupsMinAccessLevel: cfg.Gitlab.GroupFilter.MinAccessLevel,
 		GroupsFilter:         cfg.Gitlab.GroupFilter.Name,
+		GroupsLimit:          int(cfg.Gitlab.GroupFilter.Limit),
 		UserACLs:             cfg.Realms.UserAccessControlList(),
 		UserCache:            users,
 	}

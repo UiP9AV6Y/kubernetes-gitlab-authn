@@ -15,6 +15,7 @@ type GitlabGroupFilter struct {
 	TopLevelOnly   bool                    `json:"top_level_only"`
 	MinAccessLevel gitlab.AccessLevelValue `json:"min_access_level"`
 	Name           string                  `json:"name"`
+	Limit          uint8                   `json:"limit"`
 }
 
 type Gitlab struct {
@@ -33,7 +34,8 @@ func NewGitlab() *Gitlab {
 	result.Server.Address = "gitlab.com"
 	result.Server.Port = 443
 	result.Server.TLS = &TLS{}
-	result.GroupFilter.MinAccessLevel = gitlab.MinimalAccessPermissions
+	result.GroupFilter.Limit = 20                                       // Gitlab Groups API default
+	result.GroupFilter.MinAccessLevel = gitlab.MinimalAccessPermissions // no filter
 
 	return result
 }
