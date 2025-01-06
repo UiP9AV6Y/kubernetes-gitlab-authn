@@ -42,6 +42,8 @@ func run(o, e io.Writer, argv ...string) int {
 	router.Handle("/", web.NotFoundHandler(logger))
 	router.Handle("/api/v4/user", web.MeHandler(user, logger))
 	router.Handle("/api/v4/groups", web.GroupsHandler(groups, logger))
+	router.Handle("/api/v4/version", web.VersionHandler(logger))
+	router.Handle("/api/v4/metadata", web.MetaDataHandler(logger))
 
 	handler := web.NewFakeRuntimeHandler(
 		web.NewFakeRequestIdentificationHandler(
