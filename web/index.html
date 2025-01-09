@@ -1,8 +1,10 @@
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Name}}</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
   </head>
   <body>
     <header>
@@ -10,7 +12,7 @@
     </header>
     <main>
       {{if .Description}}<h2>{{.Description}}</h2>{{end}}
-      {{if .Version}}<div>Version: {{.Version}}</div>{{end}}
+      {{if .Version}}<div>Version: <span class="version">{{.Version}}</span></div>{{end}}
       <p>This service identifies you based on
       <a href="https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html">Personal Access Tokens</a>
       created on <a href="{{.GitlabURL}}" target="_blank">{{.GitlabURL.Host}}</a></p>
@@ -18,7 +20,7 @@
       to user account and group information.</p>
       <p>You <strong>do not</strong> need to provide your password or token to this service directly.
       Instead, configure your Kubernetes client to use the token for authentication.</p>
-      <p><code>kubectl config set-credentials <em>$CLUSTER_USER</em> --token=<em>$GITLAB_TOKEN</em></code></p>
+      <p class="code"><code>kubectl config set-credentials <em>$CLUSTER_USER</em> --token=<em>$GITLAB_TOKEN</em></code></p>
       <p>The Kubernetes authentication system will
       <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication">verify the token</a>
       on your behalf and map the information provided by the Gitlab instance to subject information suitable

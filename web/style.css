@@ -1,0 +1,26 @@
+h1 {
+  /* GitLab Orange */
+  color: #fc6d26;
+}
+
+h2 {
+  /* GitLab Sea Buckthorn */
+  color: #fca326;
+}
+
+a {
+  /* GitLab Victoria */
+  color: #554488;
+}
+
+.version {
+  /* GitLab Cinnabar */
+  color: #e24329;
+}
+
+.code {
+  padding: 1.3rem;
+  margin-bottom: 1rem;
+  color: #212529;
+  background-color: #f7f7f9;
+}
