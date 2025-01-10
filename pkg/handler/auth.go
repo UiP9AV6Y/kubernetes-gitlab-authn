@@ -131,11 +131,6 @@ func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandle
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	if r.Method != http.MethodPost {
-		http.Error(w, httpStatusMethodNotAllowed, http.StatusMethodNotAllowed)
-		return
-	}
-
 	t, m, err := parseReviewToken(r.Body)
 	if err != nil {
 		h.logger.Info("Invalid authentication request received", "err", err)

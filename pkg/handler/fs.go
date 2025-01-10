@@ -85,11 +85,6 @@ func (h *FilesystemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		route = "/index.html"
 	}
 
-	if r.Method != http.MethodGet {
-		http.Error(w, httpStatusMethodNotAllowed, http.StatusMethodNotAllowed)
-		return
-	}
-
 	if route == "/index.html" {
 		w.Header().Set("Content-Type", contentTypeHTML)
 		w.Header().Set("Last-Modified", h.modtime.Format(http.TimeFormat))
