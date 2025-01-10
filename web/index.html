@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Name}}</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="style.css?v={{unixEpoch .StartTime}}">
   </head>
   <body>
     <header>
@@ -15,7 +15,7 @@
       {{if .Version}}<div>Version: <span class="version">{{.Version}}</span></div>{{end}}
       <p>This service identifies you based on
       <a href="https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html">Personal Access Tokens</a>
-      created on <a href="{{.GitlabURL}}" target="_blank">{{.GitlabURL.Host}}</a></p>
+      created on <a href="{{.GitlabURL}}" target="_blank">{{.GitlabURL.Host | hostName}}</a></p>
       <p>The token needs to have at least <em>read_api</em> permissions in order to gain access
       to user account and group information.</p>
       <p>You <strong>do not</strong> need to provide your password or token to this service directly.
@@ -25,9 +25,8 @@
       <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication">verify the token</a>
       on your behalf and map the information provided by the Gitlab instance to subject information suitable
       for <a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding">RBAC resources</a>.</p>
-      </p>
     </main>
-    <!-- Rendered at {{.StartTime}} -->
+    {{rfcDate .StartTime | comment "Rendered at "}}
   </body>
 </html>
 

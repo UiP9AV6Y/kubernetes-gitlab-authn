@@ -2,13 +2,14 @@ package handler
 
 import (
 	"bytes"
-	"html/template"
+	htmltemplate "html/template"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/template"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/version"
 )
 
@@ -59,7 +60,7 @@ func NewFilesystemHandler(dir string, opts *FilesystemHandlerOpts) (*FilesystemH
 		return nil, err
 	}
 
-	landingView, err := template.New("/index.html").Parse(string(landingData))
+	landingView, err := htmltemplate.New("/index.html").Funcs(template.Functions).Parse(string(landingData))
 	if err != nil {
 		return nil, err
 	}
