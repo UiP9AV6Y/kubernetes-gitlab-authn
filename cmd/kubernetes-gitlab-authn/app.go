@@ -37,7 +37,7 @@ func newAppRouter(reg *prometheus.Registry, users *cache.UserInfoCache, logger *
 
 	authOpts := &handler.AuthHandlerOpts{
 		AttributesAsGroups:   cfg.Gitlab.AttributesAsGroups,
-		InactivityTimeout:    cfg.Gitlab.InactivityTimeout,
+		InactivityTimeout:    cfg.Gitlab.InactivityTimeout.Duration,
 		GroupsOwnedOnly:      cfg.Gitlab.GroupFilter.OwnedOnly,
 		GroupsTopLevelOnly:   cfg.Gitlab.GroupFilter.TopLevelOnly,
 		GroupsMinAccessLevel: cfg.Gitlab.GroupFilter.MinAccessLevel,
