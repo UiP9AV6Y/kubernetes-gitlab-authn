@@ -62,8 +62,13 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		return
 	}
 
+	stats, err := metrics.New(registry)
+	if err != nil {
+		return
+	}
+
 	users := cache.NewUserInfoCache(config.Cache.ExpirationTime())
-	router, err = newAppRouter(registry, users, logger, config)
+	router, err = newAppRouter(stats, users, logger, config)
 	if err != nil {
 		return err
 	}

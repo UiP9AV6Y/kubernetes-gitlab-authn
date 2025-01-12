@@ -20,6 +20,7 @@ import (
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
 )
 
 var (
@@ -34,8 +35,10 @@ const (
 const unauthorizedUsername = "n/a"
 
 type AuthHandler struct {
-	client     *gitlab.Client
-	logger     *slog.Logger
+	client *gitlab.Client
+	logger *slog.Logger
+	stats  *metrics.Metrics
+
 	listGroups *gitlab.ListGroupsOptions
 	userInfo   *access.UserInfoOptions
 
@@ -43,14 +46,14 @@ type AuthHandler struct {
 	userCache *cache.UserInfoCache
 }
 
-func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts ...func(*AuthHandler)) (*AuthHandler, error) {
+func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts ...func(*AuthHandler)) (result *AuthHandler, err error) {
 	listGroups := new(gitlab.ListGroupsOptions)
 	userInfo := new(access.UserInfoOptions)
 	userAuth := map[string]userauthz.Authorizer{
 		"": userauthz.AlwaysAllowAuthorizer,
 	}
 	userCache := cache.NewUserInfoCache(1 * time.Hour)
-	result := &AuthHandler{
+	result = &AuthHandler{
 		client:     client,
 		logger:     logger,
 		listGroups: listGroups,
@@ -63,7 +66,11 @@ func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts ...func(*Au
 		o(result)
 	}
 
-	return result, nil
+	if result.stats == nil {
+		result.stats, err = metrics.NewDefault()
+	}
+
+	return
 }
 
 func WithAuthGroupFilter(v *gitlab.ListGroupsOptions) func(*AuthHandler) {
@@ -90,12 +97,20 @@ func WithAuthUserCache(v *cache.UserInfoCache) func(*AuthHandler) {
 	}
 }
 
+func WithAuthMetrics(v *metrics.Metrics) func(*AuthHandler) {
+	return func(h *AuthHandler) {
+		h.stats = v
+	}
+}
+
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
+	s := r.PathValue("realm")
 	t, m, err := parseReviewToken(r.Body)
 	if err != nil {
 		h.logger.Info("Invalid authentication request received", "err", err)
+		h.stats.AuthMalformed(s)
 		h.rejectReview(w, m, "malformed review request", http.StatusBadRequest)
 		return
 	}
@@ -107,8 +122,9 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			i.Username = u.Username      // for logging purposes later on
 			i.UID = unauthorizedUsername // mark as invalid
-			cache.SetUserInfo(h.userCache, t, i)
 			h.logger.Info("Authentication failed", "user", i.Username, "err", err)
+			cache.SetUserInfo(h.userCache, t, i)
+			h.stats.AuthNotFound(s)
 			h.rejectReview(w, m, "unable to review request", http.StatusUnauthorized)
 			return
 		}
@@ -121,28 +137,32 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.logger.Debug("Using cached authentication", "user", i.Username)
 		if i.UID == unauthorizedUsername { // previous rejection
 			h.logger.Info("Cached authentication failure", "user", i.Username)
+			h.stats.AuthNotFound(s)
 			h.rejectReview(w, m, "repeated authentication failure", http.StatusUnauthorized)
 			return
 		}
 	}
 
-	s := r.PathValue("realm")
 	err = h.authorize(r.Context(), s, i)
 	if err != nil {
 		h.logger.Info("Authorization failed", "user", i.Username, "realm", s, "err", err)
+		h.stats.AuthUnauthorized(s)
 		h.rejectReview(w, m, "precondition failed", http.StatusUnauthorized)
 		return
 	}
 
 	h.logger.Info("Authorization accepted", "user", i.Username, "realm", s)
+	h.stats.AuthSuccess(s)
 	h.acceptReview(w, m, i)
 }
 
 func (h *AuthHandler) authenticate(ctx context.Context, token string) (user *gitlab.User, groups []*gitlab.Group, err error) {
+	start := time.Now()
 	user, _, err = h.client.Users.CurrentUser(
 		gitlab.WithContext(ctx),
 		gitlab.WithToken(gitlab.PrivateToken, token),
 	)
+	h.stats.GitlabRequest("users", time.Since(start))
 	if err != nil {
 		user = &gitlab.User{
 			Username: unauthorizedUsername,
@@ -150,10 +170,12 @@ func (h *AuthHandler) authenticate(ctx context.Context, token string) (user *git
 		return
 	}
 
+	start = time.Now()
 	groups, _, err = h.client.Groups.ListGroups(h.listGroups,
 		gitlab.WithContext(ctx),
 		gitlab.WithToken(gitlab.PrivateToken, token),
 	)
+	h.stats.GitlabRequest("groups", time.Since(start))
 	if err != nil {
 		return
 	}

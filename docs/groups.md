@@ -12,8 +12,8 @@ unfiltered by default. If a Gitlab instance happens to have a lot of
 groups which are not required in the context of Kubernetes, query
 [filters][list-all-groups] can be associated with outgoing requests:
 
-| Config setting                            | Gitlab API parameter    |
-|-------------------------------------------|-------------------------|
+| Config setting                            | Gitlab API parameter      |
+|-------------------------------------------|---------------------------|
 | `gitlab.group_filter.name`                | *search*                  |
 | `gitlab.group_filter.owned_only`          | *owned*                   |
 | `gitlab.group_filter.top_level_only`      | *top_level_only*          |

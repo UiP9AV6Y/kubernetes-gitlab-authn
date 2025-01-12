@@ -3,8 +3,6 @@ package main
 import (
 	"net/http"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	slogadapter "github.com/UiP9AV6Y/go-slog-adapter"
@@ -12,9 +10,10 @@ import (
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/handler"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
 )
 
-func newAppRouter(reg *prometheus.Registry, users *cache.UserInfoCache, logger *slogadapter.SlogAdapter, cfg *config.Config) (http.Handler, error) {
+func newAppRouter(reg *metrics.Metrics, users *cache.UserInfoCache, logger *slogadapter.SlogAdapter, cfg *config.Config) (http.Handler, error) {
 	router := http.NewServeMux()
 	baseURL, err := cfg.Gitlab.URL()
 	if err != nil {
@@ -40,6 +39,7 @@ func newAppRouter(reg *prometheus.Registry, users *cache.UserInfoCache, logger *
 		handler.WithAuthUserTransform(cfg.Gitlab.UserInfoOptions()),
 		handler.WithAuthUserACLs(cfg.Realms.UserAccessControlList()),
 		handler.WithAuthUserCache(users),
+		handler.WithAuthMetrics(reg),
 	)
 	if err != nil {
 		return nil, err
