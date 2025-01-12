@@ -61,11 +61,11 @@ func newAppRouter(reg *prometheus.Registry, users *cache.UserInfoCache, logger *
 
 	redirHandler := http.RedirectHandler("/about/", http.StatusSeeOther)
 
-	router.Handle("GET "+cfg.Server.HandlerPath("{$}"), redirHandler)
-	router.Handle("GET "+cfg.Server.HandlerPath("index.html"), redirHandler)
-	router.Handle("GET "+cfg.Server.HandlerPath("about/"), http.StripPrefix("/about", webHandler))
-	router.Handle("POST "+cfg.Server.HandlerPath("authenticate"), authHandler)
-	router.Handle("POST "+cfg.Server.HandlerPath("authenticate/{realm}"), authHandler)
+	router.Handle(http.MethodGet+" "+cfg.Server.HandlerPath("{$}"), redirHandler)
+	router.Handle(http.MethodGet+" "+cfg.Server.HandlerPath("index.html"), redirHandler)
+	router.Handle(http.MethodGet+" "+cfg.Server.HandlerPath("about/"), http.StripPrefix("/about", webHandler))
+	router.Handle(http.MethodPost+" "+cfg.Server.HandlerPath("authenticate"), authHandler)
+	router.Handle(http.MethodPost+" "+cfg.Server.HandlerPath("authenticate/{realm}"), authHandler)
 
 	return router, nil
 }
