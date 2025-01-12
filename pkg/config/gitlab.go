@@ -8,6 +8,8 @@ import (
 	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 )
 
 type GitlabGroupFilter struct {
@@ -16,6 +18,37 @@ type GitlabGroupFilter struct {
 	MinAccessLevel gitlab.AccessLevelValue `json:"min_access_level"`
 	Name           string                  `json:"name"`
 	Limit          uint8                   `json:"limit"`
+}
+
+func (f *GitlabGroupFilter) ListOptions() *gitlab.ListGroupsOptions {
+	list := gitlab.ListOptions{
+		Page: 1,
+	}
+	result := &gitlab.ListGroupsOptions{
+		ListOptions: list,
+	}
+
+	if f.Name != "" {
+		result.Search = &f.Name
+	}
+
+	if f.OwnedOnly {
+		result.Owned = &f.OwnedOnly
+	}
+
+	if f.TopLevelOnly {
+		result.TopLevelOnly = &f.TopLevelOnly
+	}
+
+	if f.Limit > 0 {
+		result.ListOptions.PerPage = int(f.Limit)
+	}
+
+	if f.MinAccessLevel > gitlab.MinimalAccessPermissions {
+		result.MinAccessLevel = &f.MinAccessLevel
+	}
+
+	return result
 }
 
 type Gitlab struct {
@@ -135,4 +168,13 @@ func (g *Gitlab) Certificates() (certs []tls.Certificate, err error) {
 
 	certs = []tls.Certificate{certificate}
 	return
+}
+
+func (g *Gitlab) UserInfoOptions() *access.UserInfoOptions {
+	result := &access.UserInfoOptions{
+		AttributesAsGroups: g.AttributesAsGroups,
+		DormantTimeout:     g.InactivityTimeout.Duration,
+	}
+
+	return result
 }

@@ -30,28 +30,27 @@ type FilesystemHandlerOpts struct {
 	ExtraData map[string]interface{}
 }
 
-func NewFilesystemHandlerOpts() *FilesystemHandlerOpts {
-	extraData := map[string]interface{}{}
-	result := &FilesystemHandlerOpts{
-		Name:      "gitlab-authn",
-		Version:   version.Version(),
-		GitlabURL: DefaultGitlabURL,
-		StartTime: time.Now(),
-		ExtraData: extraData,
-	}
-
-	return result
-}
-
 type FilesystemHandler struct {
 	landingPage []byte
 	fallback    http.Handler
 	modtime     time.Time
 }
 
-func NewFilesystemHandler(dir string, opts *FilesystemHandlerOpts) (*FilesystemHandler, error) {
-	if opts == nil {
-		opts = NewFilesystemHandlerOpts()
+func FilesystemHandlerFor(dir string, opts FilesystemHandlerOpts) (*FilesystemHandler, error) {
+	if opts.Name == "" {
+		opts.Name = "gitlab-authn"
+	}
+	if opts.Version == "" {
+		opts.Version = version.Version()
+	}
+	if opts.GitlabURL == nil {
+		opts.GitlabURL = DefaultGitlabURL
+	}
+	if opts.StartTime.IsZero() {
+		opts.StartTime = time.Now()
+	}
+	if opts.ExtraData == nil {
+		opts.ExtraData = map[string]interface{}{}
 	}
 
 	landingPage := filepath.Join(dir, "index.html")
@@ -66,7 +65,7 @@ func NewFilesystemHandler(dir string, opts *FilesystemHandlerOpts) (*FilesystemH
 	}
 
 	var buf bytes.Buffer
-	if err := landingView.Execute(&buf, opts); err != nil {
+	if err := landingView.Execute(&buf, &opts); err != nil {
 		return nil, err
 	}
 

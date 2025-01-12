@@ -35,26 +35,21 @@ func newAppRouter(reg *prometheus.Registry, users *cache.UserInfoCache, logger *
 		return nil, err
 	}
 
-	authOpts := &handler.AuthHandlerOpts{
-		AttributesAsGroups:   cfg.Gitlab.AttributesAsGroups,
-		InactivityTimeout:    cfg.Gitlab.InactivityTimeout.Duration,
-		GroupsOwnedOnly:      cfg.Gitlab.GroupFilter.OwnedOnly,
-		GroupsTopLevelOnly:   cfg.Gitlab.GroupFilter.TopLevelOnly,
-		GroupsMinAccessLevel: cfg.Gitlab.GroupFilter.MinAccessLevel,
-		GroupsFilter:         cfg.Gitlab.GroupFilter.Name,
-		GroupsLimit:          int(cfg.Gitlab.GroupFilter.Limit),
-		UserACLs:             cfg.Realms.UserAccessControlList(),
-		UserCache:            users,
-	}
-	authHandler, err := handler.NewAuthHandler(apiClient, logger.Logger(), authOpts)
+	authHandler, err := handler.NewAuthHandler(apiClient, logger.Logger(),
+		handler.WithAuthGroupFilter(cfg.Gitlab.GroupFilter.ListOptions()),
+		handler.WithAuthUserTransform(cfg.Gitlab.UserInfoOptions()),
+		handler.WithAuthUserACLs(cfg.Realms.UserAccessControlList()),
+		handler.WithAuthUserCache(users),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	webOpts := handler.NewFilesystemHandlerOpts()
-	webOpts.GitlabURL = baseURL
-	webOpts.Description = cfg.Web.Description
-	webHandler, err := handler.NewFilesystemHandler(cfg.Web.Path, webOpts)
+	webOpts := handler.FilesystemHandlerOpts{
+		GitlabURL:   baseURL,
+		Description: cfg.Web.Description,
+	}
+	webHandler, err := handler.FilesystemHandlerFor(cfg.Web.Path, webOpts)
 	if err != nil {
 		return nil, err
 	}

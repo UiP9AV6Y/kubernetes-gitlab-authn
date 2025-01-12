@@ -33,74 +33,6 @@ const (
 
 const unauthorizedUsername = "n/a"
 
-type AuthHandlerOpts struct {
-	AttributesAsGroups bool
-	InactivityTimeout  time.Duration
-
-	GroupsOwnedOnly      bool
-	GroupsTopLevelOnly   bool
-	GroupsMinAccessLevel gitlab.AccessLevelValue
-	GroupsFilter         string
-	GroupsLimit          int
-
-	UserACLs  map[string]userauthz.Authorizer
-	UserCache *cache.UserInfoCache
-}
-
-func NewAuthHandlerOpts() *AuthHandlerOpts {
-	acls := map[string]userauthz.Authorizer{
-		"": userauthz.AlwaysAllowAuthorizer,
-	}
-	users := cache.NewUserInfoCache(1 * time.Hour)
-	result := &AuthHandlerOpts{
-		GroupsMinAccessLevel: gitlab.MinimalAccessPermissions,
-		UserACLs:             acls,
-		UserCache:            users,
-	}
-
-	return result
-}
-
-func (o *AuthHandlerOpts) UserInfoOptions() *access.UserInfoOptions {
-	result := &access.UserInfoOptions{
-		AttributesAsGroups: o.AttributesAsGroups,
-		DormantTimeout:     o.InactivityTimeout,
-	}
-
-	return result
-}
-
-func (o *AuthHandlerOpts) ListGroupsOptions() *gitlab.ListGroupsOptions {
-	list := gitlab.ListOptions{
-		Page: 1,
-	}
-	result := &gitlab.ListGroupsOptions{
-		ListOptions: list,
-	}
-
-	if o.GroupsFilter != "" {
-		result.Search = &o.GroupsFilter
-	}
-
-	if o.GroupsOwnedOnly {
-		result.Owned = &o.GroupsOwnedOnly
-	}
-
-	if o.GroupsTopLevelOnly {
-		result.TopLevelOnly = &o.GroupsTopLevelOnly
-	}
-
-	if o.GroupsLimit > 0 {
-		result.ListOptions.PerPage = o.GroupsLimit
-	}
-
-	if o.GroupsMinAccessLevel > gitlab.MinimalAccessPermissions {
-		result.MinAccessLevel = &o.GroupsMinAccessLevel
-	}
-
-	return result
-}
-
 type AuthHandler struct {
 	client     *gitlab.Client
 	logger     *slog.Logger
@@ -111,21 +43,51 @@ type AuthHandler struct {
 	userCache *cache.UserInfoCache
 }
 
-func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts *AuthHandlerOpts) (*AuthHandler, error) {
-	if opts == nil {
-		opts = NewAuthHandlerOpts()
+func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts ...func(*AuthHandler)) (*AuthHandler, error) {
+	listGroups := new(gitlab.ListGroupsOptions)
+	userInfo := new(access.UserInfoOptions)
+	userAuth := map[string]userauthz.Authorizer{
+		"": userauthz.AlwaysAllowAuthorizer,
 	}
-
+	userCache := cache.NewUserInfoCache(1 * time.Hour)
 	result := &AuthHandler{
 		client:     client,
 		logger:     logger,
-		listGroups: opts.ListGroupsOptions(),
-		userInfo:   opts.UserInfoOptions(),
-		userAuth:   opts.UserACLs,
-		userCache:  opts.UserCache,
+		listGroups: listGroups,
+		userInfo:   userInfo,
+		userAuth:   userAuth,
+		userCache:  userCache,
+	}
+
+	for _, o := range opts {
+		o(result)
 	}
 
 	return result, nil
+}
+
+func WithAuthGroupFilter(v *gitlab.ListGroupsOptions) func(*AuthHandler) {
+	return func(h *AuthHandler) {
+		h.listGroups = v
+	}
+}
+
+func WithAuthUserTransform(v *access.UserInfoOptions) func(*AuthHandler) {
+	return func(h *AuthHandler) {
+		h.userInfo = v
+	}
+}
+
+func WithAuthUserACLs(v map[string]userauthz.Authorizer) func(*AuthHandler) {
+	return func(h *AuthHandler) {
+		h.userAuth = v
+	}
+}
+
+func WithAuthUserCache(v *cache.UserInfoCache) func(*AuthHandler) {
+	return func(h *AuthHandler) {
+		h.userCache = v
+	}
 }
 
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
