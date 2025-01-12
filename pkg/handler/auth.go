@@ -28,8 +28,7 @@ var (
 )
 
 const (
-	KindTokenReview                 = "TokenReview"
-	DefaultAuthenticationAPIVersion = "authentication.k8s.io/v1"
+	KindTokenReview = "TokenReview"
 )
 
 const unauthorizedUsername = "n/a"
@@ -228,7 +227,6 @@ func writeReview(w http.ResponseWriter, header meta.TypeMeta, status authenticat
 }
 
 func parseReviewToken(b io.Reader) (token string, header meta.TypeMeta, err error) {
-	header = meta.TypeMeta{APIVersion: DefaultAuthenticationAPIVersion, Kind: KindTokenReview}
 	dto := &authentication.TokenReview{}
 	err = json.NewDecoder(b).Decode(dto)
 	if err != nil {
@@ -239,7 +237,7 @@ func parseReviewToken(b io.Reader) (token string, header meta.TypeMeta, err erro
 	token = dto.Spec.Token
 
 	if header.APIVersion == "" {
-		header.APIVersion = DefaultAuthenticationAPIVersion
+		header.APIVersion = authentication.SchemeGroupVersion.String()
 	}
 
 	if header.Kind == "" {
