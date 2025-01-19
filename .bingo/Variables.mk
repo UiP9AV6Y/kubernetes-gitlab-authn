@@ -29,6 +29,12 @@ $(BUILDINFO): $(BINGO_DIR)/buildinfo.mod
 	@echo "(re)installing $(GOBIN)/buildinfo-v0.0.0-20240316121816-2a0a49f5d3c2"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=buildinfo.mod -o=$(GOBIN)/buildinfo-v0.0.0-20240316121816-2a0a49f5d3c2 "github.com/UiP9AV6Y/buildinfo/tools/cmd/buildinfo"
 
+CHANGIE := $(GOBIN)/changie-v1.21.0
+$(CHANGIE): $(BINGO_DIR)/changie.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/changie-v1.21.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=changie.mod -o=$(GOBIN)/changie-v1.21.0 "github.com/miniscruff/changie"
+
 GOIMPORTS := $(GOBIN)/goimports-v0.28.0
 $(GOIMPORTS): $(BINGO_DIR)/goimports.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
