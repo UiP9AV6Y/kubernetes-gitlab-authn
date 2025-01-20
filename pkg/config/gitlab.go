@@ -5,12 +5,20 @@ import (
 	"crypto/x509"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 )
+
+// https://docs.gitlab.com/ee/security/tokens/#token-prefixes
+var GitlabTokenPrefixes = []string{
+	"glpat-",
+	"gloas-",
+	"glsoat-",
+}
 
 type GitlabGroupFilter struct {
 	OwnedOnly      bool                    `json:"owned_only"`
@@ -57,11 +65,14 @@ type Gitlab struct {
 	AttributesAsGroups bool              `json:"attributes_as_groups"`
 	InactivityTimeout  Duration          `json:"inactivity_timeout"`
 	GroupFilter        GitlabGroupFilter `json:"group_filter"`
+
+	TokenPrefixes []string `json:"token_prefixes"`
 }
 
 func NewGitlab() *Gitlab {
 	result := &Gitlab{
 		Server:            *NewServer(),
+		TokenPrefixes:     GitlabTokenPrefixes,
 		InactivityTimeout: Duration{time.Hour * 24 * 30 * 6}, // ~6 months
 	}
 	result.Server.Address = "gitlab.com"
@@ -174,6 +185,20 @@ func (g *Gitlab) UserInfoOptions() *access.UserInfoOptions {
 	result := &access.UserInfoOptions{
 		AttributesAsGroups: g.AttributesAsGroups,
 		DormantTimeout:     g.InactivityTimeout.Duration,
+	}
+
+	return result
+}
+
+func (g *Gitlab) TokenValidator() func(string) bool {
+	result := func(v string) bool {
+		for _, p := range g.TokenPrefixes {
+			if strings.HasPrefix(v, p) {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	return result

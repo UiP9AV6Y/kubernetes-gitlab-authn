@@ -36,6 +36,7 @@ func newAppRouter(reg *metrics.Metrics, users *cache.UserInfoCache, logger *slog
 
 	authHandler, err := handler.NewAuthHandler(apiClient, logger.Logger(),
 		handler.WithAuthGroupFilter(cfg.Gitlab.GroupFilter.ListOptions()),
+		handler.WithAuthTokenValidator(cfg.Gitlab.TokenValidator()),
 		handler.WithAuthUserTransform(cfg.Gitlab.UserInfoOptions()),
 		handler.WithAuthUserACLs(cfg.Realms.UserAccessControlList()),
 		handler.WithAuthUserCache(users),

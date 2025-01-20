@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	ErrMissingToken = errors.New("Missing token")
+	ErrMissingToken   = errors.New("Missing token")
+	ErrMalformedToken = errors.New("Token validation failed")
 )
 
 const (
@@ -37,6 +38,8 @@ type AuthHandler struct {
 	client *gitlab.Client
 	logger *slog.Logger
 	stats  *metrics.Metrics
+
+	preflight func(string) bool
 
 	listGroups *gitlab.ListGroupsOptions
 	userInfo   *access.UserInfoOptions
@@ -52,9 +55,13 @@ func NewAuthHandler(client *gitlab.Client, logger *slog.Logger, opts ...func(*Au
 		"": userauthz.AlwaysAllowAuthorizer,
 	}
 	userCache := cache.NewUserInfoCache(1 * time.Hour)
+	preflight := func(_ string) bool {
+		return true
+	}
 	result = &AuthHandler{
 		client:     client,
 		logger:     logger,
+		preflight:  preflight,
 		listGroups: listGroups,
 		userInfo:   userInfo,
 		userAuth:   userAuth,
@@ -102,12 +109,21 @@ func WithAuthMetrics(v *metrics.Metrics) func(*AuthHandler) {
 	}
 }
 
+func WithAuthTokenValidator(v func(string) bool) func(*AuthHandler) {
+	return func(h *AuthHandler) {
+		h.preflight = v
+	}
+}
+
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	s := r.PathValue("realm")
 	t, m, err := parseReviewToken(r.Body)
-	if err != nil {
+	if err != nil || !h.preflight(t) {
+		if err == nil {
+			err = ErrMalformedToken
+		}
 		h.logger.Info("Invalid authentication request received", "err", err)
 		h.stats.AuthMalformed(s)
 		h.rejectReview(w, m, "malformed review request", http.StatusBadRequest)
