@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -67,7 +68,7 @@ func MetaDataHandler(logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(handler)
 }
 
-func MeHandler(q model.SelectUserQuery, logger *slog.Logger) http.Handler {
+func MeHandler(dao *model.DataAccess, logger *slog.Logger) http.Handler {
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		auth := parseToken(req)
 		if auth == "" {
@@ -76,21 +77,29 @@ func MeHandler(q model.SelectUserQuery, logger *slog.Logger) http.Handler {
 			return
 		}
 
-		result, ok := q(auth)
-		if ok {
-			logger.Info("User request yielded result", "token", auth)
-			respondDTO(w, result)
-			return
+		uid, err := dao.Tokens.FindUserIdentifier(auth)
+		if errors.Is(err, model.ErrNotFound) {
+			logger.Info("User request with invalid authentication", "token", auth)
+			respondError(w, http.StatusNotFound, "user not found")
+		} else if err != nil {
+			logger.Info("User request can not be served properly", "err", err)
+			respondError(w, http.StatusInternalServerError, "token lookup failed")
 		}
 
-		logger.Info("User request can not be served properly", "token", auth)
-		respondError(w, http.StatusNotFound, "user not found")
+		result, err := dao.Users.FindByIdentifier(uid)
+		if err != nil {
+			logger.Info("User request yielded no result", "uid", uid, "err", err)
+			respondError(w, http.StatusInternalServerError, "user lookup failed")
+		}
+
+		logger.Info("User request yielded result", "uid", uid)
+		respondDTO(w, result)
 	}
 
 	return http.HandlerFunc(handler)
 }
 
-func GroupsHandler(q model.SelectGroupsQuery, logger *slog.Logger) http.Handler {
+func GroupsHandler(dao *model.DataAccess, logger *slog.Logger) http.Handler {
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		auth := parseToken(req)
 		if auth == "" {
@@ -99,18 +108,33 @@ func GroupsHandler(q model.SelectGroupsQuery, logger *slog.Logger) http.Handler 
 			return
 		}
 
-		page, size := parseOffsetPagination(req)
-		offset := size * (page - 1)
-		result, total, ok := q(auth, offset, size)
-		if ok {
-			logger.Info("Groups request yielded result", "token", auth, "page", page, "per_page", size, "total", total)
-			NewPagination(size, page, total).WriteHeader(w, req)
-			respondDTO(w, result)
-			return
+		uid, err := dao.Tokens.FindUserIdentifier(auth)
+		if errors.Is(err, model.ErrNotFound) {
+			logger.Info("Groups request with invalid authentication", "token", auth)
+			respondError(w, http.StatusNotFound, "groups not found")
+		} else if err != nil {
+			logger.Info("Groups request can not be served properly", "err", err)
+			respondError(w, http.StatusInternalServerError, "token lookup failed")
 		}
 
-		logger.Info("Groups request can not be served properly", "token", auth, "page", page, "per_page", size)
-		respondError(w, http.StatusNotFound, "groups not found")
+		page, size := parseOffsetPagination(req)
+		offset := size * (page - 1)
+
+		result, err := dao.Groups.FindByUserIdentifier(uid, offset, size)
+		if err != nil {
+			logger.Info("Groups request yielded no result", "uid", uid, "err", err)
+			respondError(w, http.StatusInternalServerError, "groups lookup failed")
+		}
+
+		total, err := dao.Groups.CountByUserIdentifier(uid)
+		if err != nil {
+			logger.Info("Unable to count user groups", "uid", uid, "err", err)
+			respondError(w, http.StatusInternalServerError, "groups total failed")
+		}
+
+		logger.Info("Groups request yielded result", "uid", uid, "page", page, "per_page", size, "total", total)
+		NewPagination(size, page, total).WriteHeader(w, req)
+		respondDTO(w, result)
 	}
 
 	return http.HandlerFunc(handler)

@@ -12,14 +12,16 @@ import (
 
 	logflags "github.com/UiP9AV6Y/go-slog-adapter/stdflags"
 
-	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/gitlab-mock/internal/model"
+	dao "github.com/UiP9AV6Y/kubernetes-gitlab-authn/gitlab-mock/internal/model"
+	mdao "github.com/UiP9AV6Y/kubernetes-gitlab-authn/gitlab-mock/internal/model/memory"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/gitlab-mock/internal/web"
 )
 
 func run(o, e io.Writer, argv ...string) int {
 	name := filepath.Base(argv[0])
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
-	strict := fs.Bool("auth.strict", false, "Use equality instead of substring comparison for tokens")
+	groups := fs.Uint64("mock.feature-groups", 50, "Number of mock feature groups to create")
+	prefix := fs.String("mock.token-prefix", "glpat-", "Prefix to use for generated authentication tokens")
 	listen := fs.String("web.listen-address", ":8080", "Addresses to listen for incoming HTTP requests")
 	rtTime := fs.Duration("rate-limit.interval", 1*time.Minute, "Fake rate limit interval to report to clients")
 	rtSize := fs.Int64("rate-limit.quota", 100, "Fake rate limit quota to report to clients")
@@ -34,14 +36,27 @@ func run(o, e io.Writer, argv ...string) int {
 		return 1
 	}
 
-	user := model.SelectUserByTokenQuery(*strict)
-	groups := model.SelectGroupsByTokenQuery(*strict)
 	logger := log.Adapter(o, nil).Logger()
-	router := http.NewServeMux()
 
+	data, err := mdao.NewDataAccess()
+	if err != nil {
+		logger.Error("Data access setup failed", "err", err)
+		return 1
+	}
+
+	mocks := &dao.Mocks{
+		TokenPrefix: *prefix,
+		GroupCount:  *groups,
+	}
+	if err := mocks.Create(data); err != nil {
+		logger.Error("Mock seeding failed", "err", err)
+		return 1
+	}
+
+	router := http.NewServeMux()
 	router.Handle("/", web.NotFoundHandler(logger))
-	router.Handle("/api/v4/user", web.MeHandler(user, logger))
-	router.Handle("/api/v4/groups", web.GroupsHandler(groups, logger))
+	router.Handle("/api/v4/user", web.MeHandler(data, logger))
+	router.Handle("/api/v4/groups", web.GroupsHandler(data, logger))
 	router.Handle("/api/v4/version", web.VersionHandler(logger))
 	router.Handle("/api/v4/metadata", web.MetaDataHandler(logger))
 
