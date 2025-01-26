@@ -21,7 +21,7 @@ func newMetricsRouter(reg *prometheus.Registry, logger *slogadapter.SlogAdapter,
 	}
 	handler := promhttp.HandlerFor(reg, opts)
 
-	router.Handle(cfg.Server.HandlerPath(""), handler)
+	router.Handle(http.MethodGet+" "+cfg.Server.HandlerPath(""), handler)
 
 	return router, nil
 }

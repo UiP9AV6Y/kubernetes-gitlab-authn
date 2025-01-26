@@ -14,8 +14,8 @@ func newHealthRouter(_ *slogadapter.SlogAdapter, cfg *config.Health) (http.Handl
 		fmt.Fprintf(w, "OK")
 	}
 
-	router.HandleFunc(cfg.Server.HandlerPath("health"), handler)
-	router.HandleFunc(cfg.Server.HandlerPath("ready"), handler)
+	router.HandleFunc(http.MethodGet+" "+cfg.Server.HandlerPath("health"), handler)
+	router.HandleFunc(http.MethodGet+" "+cfg.Server.HandlerPath("ready"), handler)
 
 	return router, nil
 }
