@@ -237,7 +237,7 @@ func writeReview(w http.ResponseWriter, header meta.TypeMeta, status authenticat
 		Status:     status,
 	}
 
-	w.Header().Set("Content-Type", contentTypeJSON)
+	w.Header().Set(HeaderContentType, ContentTypeJSON)
 	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(dto)
 }

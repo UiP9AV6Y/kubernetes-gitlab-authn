@@ -86,8 +86,8 @@ func (h *FilesystemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if route == "/index.html" {
-		w.Header().Set("Content-Type", contentTypeHTML)
-		w.Header().Set("Last-Modified", h.modtime.Format(http.TimeFormat))
+		w.Header().Set(HeaderContentType, ContentTypeHTML)
+		w.Header().Set(HeaderLastModified, h.modtime.Format(http.TimeFormat))
 		_, _ = w.Write(h.landingPage)
 	} else {
 		h.fallback.ServeHTTP(w, r)
