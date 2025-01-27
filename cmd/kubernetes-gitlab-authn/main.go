@@ -25,6 +25,7 @@ import (
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 	cfgflags "github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config/stdflags"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/handler"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/health"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/version"
@@ -34,7 +35,7 @@ const envPrefix = "GITLAB_AUTHN_"
 
 func newHTTPServer(h http.Handler, ctx context.Context) *http.Server {
 	result := &http.Server{
-		Handler: h,
+		Handler: handler.SystemRequestIdentifier(h),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

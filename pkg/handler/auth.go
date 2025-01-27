@@ -21,6 +21,7 @@ import (
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/access"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/tracing"
 )
 
 var (
@@ -172,10 +173,12 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) authenticate(ctx context.Context, token string) (user *gitlab.User, groups []*gitlab.Group, err error) {
+	request := tracing.RequestIdentifierFromContext(ctx)
 	start := time.Now()
 	user, _, err = h.client.Users.CurrentUser(
 		gitlab.WithContext(ctx),
 		gitlab.WithToken(gitlab.PrivateToken, token),
+		gitlab.WithHeader(HeaderRequestId, request),
 	)
 	h.stats.GitlabRequest("users", time.Since(start))
 	if err != nil {
@@ -189,6 +192,7 @@ func (h *AuthHandler) authenticate(ctx context.Context, token string) (user *git
 	groups, _, err = h.client.Groups.ListGroups(h.listGroups,
 		gitlab.WithContext(ctx),
 		gitlab.WithToken(gitlab.PrivateToken, token),
+		gitlab.WithHeader(HeaderRequestId, request),
 	)
 	h.stats.GitlabRequest("groups", time.Since(start))
 	if err != nil {
