@@ -25,6 +25,7 @@ import (
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/cache"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 	cfgflags "github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config/stdflags"
+	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/health"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/metrics"
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/version"
 )
@@ -49,11 +50,16 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 	mainCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	status := health.New()
 	registry := prometheus.NewRegistry()
 	tasks, tasksCtx := errgroup.WithContext(mainCtx)
 	servers := &serverManager{
 		logger: logger.Logger(),
 		ctx:    tasksCtx,
+	}
+	lifecycle := &serverTaskCallback{
+		Start: status.Restore,
+		Stop:  status.Degrade,
 	}
 
 	buildinfo := bicol.New(version.BuildInfo(), metrics.Namespace)
@@ -77,11 +83,11 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		return err
 	}
 
-	bootup, shutdown := servers.CacheTask(users)
+	bootup, shutdown := servers.CacheTask(users, nil)
 	queue := []serverTask{bootup, shutdown}
 
 	server = newHTTPServer(router, mainCtx)
-	bootup, shutdown = servers.HTTPTask("app", server, config.Server)
+	bootup, shutdown = servers.HTTPTask("app", server, config.Server, lifecycle)
 	queue = append(queue, bootup, shutdown)
 
 	if config.Metrics.Port > 0 {
@@ -91,18 +97,18 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		}
 
 		server = newHTTPServer(router, mainCtx)
-		bootup, shutdown = servers.HTTPTask("metrics", server, &config.Metrics.Server)
+		bootup, shutdown = servers.HTTPTask("metrics", server, &config.Metrics.Server, nil)
 		queue = append(queue, bootup, shutdown)
 	}
 
 	if config.Health.Port > 0 {
-		router, err = newHealthRouter(logger, config.Health)
+		router, err = newHealthRouter(status, logger, config.Health)
 		if err != nil {
 			return err
 		}
 
 		server = newHTTPServer(router, mainCtx)
-		bootup, shutdown = servers.HTTPTask("health", server, &config.Health.Server)
+		bootup, shutdown = servers.HTTPTask("health", server, &config.Health.Server, nil)
 		queue = append(queue, bootup, shutdown)
 	}
 

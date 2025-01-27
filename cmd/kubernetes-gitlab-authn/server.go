@@ -12,6 +12,11 @@ import (
 	"github.com/UiP9AV6Y/kubernetes-gitlab-authn/pkg/config"
 )
 
+type serverTaskCallback struct {
+	Start func()
+	Stop  func()
+}
+
 type serverTask func() error
 
 type serverManager struct {
@@ -19,9 +24,12 @@ type serverManager struct {
 	ctx    context.Context
 }
 
-func (m *serverManager) CacheTask(cache *cache.UserInfoCache) (serverTask, serverTask) {
+func (m *serverManager) CacheTask(cache *cache.UserInfoCache, cb *serverTaskCallback) (serverTask, serverTask) {
 	start := func() error {
 		m.logger.Info("Starting cache eviction scheduler")
+		if cb != nil && cb.Start != nil {
+			cb.Start()
+		}
 		cache.Start()
 
 		return nil
@@ -30,6 +38,9 @@ func (m *serverManager) CacheTask(cache *cache.UserInfoCache) (serverTask, serve
 		<-m.ctx.Done()
 
 		m.logger.Info("Cache eviction is terminating")
+		if cb != nil && cb.Stop != nil {
+			cb.Stop()
+		}
 		cache.Stop()
 
 		return nil
@@ -38,7 +49,7 @@ func (m *serverManager) CacheTask(cache *cache.UserInfoCache) (serverTask, serve
 	return serverTask(start), serverTask(stop)
 }
 
-func (m *serverManager) HTTPTask(name string, server *http.Server, config *config.Server) (serverTask, serverTask) {
+func (m *serverManager) HTTPTask(name string, server *http.Server, config *config.Server, cb *serverTaskCallback) (serverTask, serverTask) {
 	start := func() error {
 		var ln net.Listener
 		var err error
@@ -49,6 +60,9 @@ func (m *serverManager) HTTPTask(name string, server *http.Server, config *confi
 		}
 
 		m.logger.Info("Listening on", "address", ln.Addr().String(), "listener", name)
+		if cb != nil && cb.Start != nil {
+			cb.Start()
+		}
 		if config.TLS != nil && config.TLS.CertFile != "" && config.TLS.KeyFile != "" {
 			m.logger.Info("TLS is enabled.", "listener", name)
 			err = server.ServeTLS(ln, config.TLS.CertFile, config.TLS.KeyFile)
@@ -69,6 +83,9 @@ func (m *serverManager) HTTPTask(name string, server *http.Server, config *confi
 		defer cancel()
 
 		m.logger.Info("Server is shutting down", "listener", name)
+		if cb != nil && cb.Stop != nil {
+			cb.Stop()
+		}
 		return server.Shutdown(ctx)
 	}
 
