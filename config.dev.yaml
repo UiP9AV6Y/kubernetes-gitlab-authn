@@ -29,6 +29,9 @@ health:
 metrics:
   port: 9080
 
+profile:
+  port: 4380
+
 web:
   path: ./web
 

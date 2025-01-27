@@ -113,6 +113,17 @@ func runServers(name string, config *config.Config, logger *slogadapter.SlogAdap
 		queue = append(queue, bootup, shutdown)
 	}
 
+	if config.Profile.Port > 0 {
+		router, err = newProfileRouter(logger, config.Profile)
+		if err != nil {
+			return err
+		}
+
+		server = newHTTPServer(router, mainCtx)
+		bootup, shutdown = servers.HTTPTask("profile", server, &config.Profile.Server, nil)
+		queue = append(queue, bootup, shutdown)
+	}
+
 	logger.Info("Starting "+name, "version", version.Version())
 	for _, t := range queue {
 		tasks.Go(t)
